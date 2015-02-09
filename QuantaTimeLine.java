@@ -22,6 +22,7 @@ public class QuantaTimeLine {
         }
     }
     
+    //This function is wrong. Currently fixing it
     //First Come First Served.
     public void FCFS (ArrayList<Process> listOfProcesses){
         
