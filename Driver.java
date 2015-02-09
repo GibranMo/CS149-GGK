@@ -59,12 +59,12 @@ public class Driver {
             float a = setOfProcesses.get(i).getArrivalTime();
             float b = setOfProcesses.get(i).getExpRunTime();
             sumExpRunTime += b;
-            //System.out.println(i + ". " + a + "\t\t" + b);
+            System.out.println(i + ". " + a + "\t\t" + b);
             i++;
             
         }
         
-        System.out.println("\n\nTotal runtime: "+ sumExpRunTime);
+        System.out.println("\n\nTotal Exp. Runtime: "+ sumExpRunTime);
     }
     
 }
