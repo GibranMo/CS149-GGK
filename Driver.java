@@ -48,23 +48,25 @@ public class Driver {
     }
     
     //DebuggingFunction: right now prints arrival time of processes
-    public static void printStuff() {
+    public static void printStuff()  {
         
         int sumExpRunTime  = 0;
         int i = 0;
-        System.out.println("Arrival T.\t\tExp. Rt.");
+        System.out.println("Name\tArrival Tm.\tExp. Rntm.\tPriority");
+        System.out.println("-----------------------------------------------------");
         while (i < setOfProcesses.size())
         {
             
-            float a = setOfProcesses.get(i).getArrivalTime();
-            float b = setOfProcesses.get(i).getExpRunTime();
-            sumExpRunTime += b;
-            System.out.println(i + ". " + a + "\t\t" + b);
+            float arrival = setOfProcesses.get(i).getArrivalTime();
+            float runTime = setOfProcesses.get(i).getExpRunTime();
+            int priority = setOfProcesses.get(i).getPriority();
+            sumExpRunTime += runTime;
+            System.out.println(i + "\t" + arrival + "\t" + runTime + "\t" + priority);
             i++;
             
         }
         
-        System.out.println("\n\nTotal Exp. Runtime: "+ sumExpRunTime);
+        System.out.println("\n\nTotal runtime: "+ sumExpRunTime);
     }
     
 }

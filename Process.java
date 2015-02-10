@@ -48,17 +48,6 @@ public class Process {
         return priority;
     }
     
-    //Always Run for the length of 1 quanta (meaning 3 seconds)?
-    public void runProcess()  {
-        
-        float start = System.currentTimeMillis();
-        float end = start +  3000; //
-        
-        while (System.currentTimeMillis() < end)
-        {
-            
-        }	
-    }
     
 }
 
