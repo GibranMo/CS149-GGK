@@ -5,7 +5,7 @@ import java.util.Comparator;
 
 public class Driver {
     
-    static int numberOfProcesses = 75; // arbitrary ?
+    static int numberOfProcesses = 35;
     static ArrayList <Process> setOfProcesses = new ArrayList <Process> (numberOfProcesses);
     static ArrayList <Process> readyQueue = new ArrayList <Process> ();
     
