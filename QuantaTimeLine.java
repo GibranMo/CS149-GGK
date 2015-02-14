@@ -7,7 +7,7 @@ public class QuantaTimeLine {
     
     private static ArrayList <Quanta >quantaLine = new ArrayList <Quanta>();
     
-    public float quantaSize = 3; // Equal to 3 seconds  (Hence, you will see the number 3000 representing milliseconds
+    public float quantaSize = 1;
     
     
     //Just allocate 100 spaces
@@ -44,7 +44,7 @@ public class QuantaTimeLine {
             System.out.println(">>quanta spot-" + j + " process name: " + i ); //Since we are doing FCFS, 'i' represents the name of each process
             //*******************************************************************
             
-            //Check if the expected runtime of current process (i) will fit into 1 quanta which is 3.0
+            //Check if the expected runtime of current process (i) will fit into 1 quanta which is size 1
             //float processTimeRem = quantaLine.get(i).getProcessTimeRemaining(); //extract time of current process
             float processTimeRem = listOfProcesses.get(i).getExpRunTime();
             
@@ -62,7 +62,6 @@ public class QuantaTimeLine {
                         quantaLine.add(new Quanta());
                         
                     }
-                    //advanceQuantaPosition(j, listOfProcesses); //Use up quanta time line while remaining at the same remaining at same ready process index
                     quantaLine.get(j).useUpQuanta();
                     System.out.println(">>quanta spot-" + j + " process name: " + i );
                     
