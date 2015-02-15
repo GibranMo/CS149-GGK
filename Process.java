@@ -9,6 +9,8 @@ public class Process {
     private int priority; // Lowest-1,2,3,4-Highest
     private String processName;//process name
     
+    private int pausedTime;//used for preemptive algorithms
+    
     public Process(String processName){
         this.processName = processName;
     	
@@ -47,16 +49,45 @@ public class Process {
     	return processName;
     }
     
-    public void setExpRunTime(float expRunTime){
-    	this.expRunTime = expRunTime;
-    }
-    
     public void setArrivalTime(float arrivalTime){
     	this.arrivalTime = arrivalTime;
     }
     
     public void setPriority(int priority){
     	this.priority = priority;
+    }
+    
+    public void setExpRunTime(float expRunTime){
+    	this.expRunTime = expRunTime;
+    }
+    
+    /* THE FOLLOWING METHODS ARE USED FOR PREEMPTIVE ALGORITHMS */
+    
+    //decrement run time
+    public void decrementExpRunTime(){
+    	this.expRunTime--;
+    }
+    
+    //job has been suspended, set pause time
+    public void pause(int pausedTime){
+    	this.pausedTime = pausedTime;
+    }
+    
+    //job resume, reset pause time to 0
+    public void resume(){
+    	this.pausedTime = 0;
+    }
+    
+    //return paused time
+    public int getPausedTime(){
+    	return pausedTime;
+    }
+    
+    //check if job was previously suspended
+    public boolean isPaused(){
+    	if(pausedTime > 0)
+    		return true;
+    	return false;
     }
 }
 

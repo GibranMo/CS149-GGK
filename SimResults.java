@@ -21,10 +21,10 @@ public class SimResults {
 	private int numOfCompletedProcesses;
 	
 	//ordered timeline for processes
-	private Queue<Process> timeline;
+	private Queue<String> timeline;
 	
 	public SimResults(){
-		timeline = new LinkedList<Process>();
+		timeline = new LinkedList<String>();
 	}
 	
 	public void setSumOfTurnaround(double sumOfTurnaround){
@@ -63,19 +63,21 @@ public class SimResults {
 	}
 	
 	//Return timeline queue
-	public Queue<Process> getTimeline(){
+	public Queue<String> getTimeline(){
 		return timeline;
 	}
 	
 	//Add a process to the timeline
-	public void addToTimeline(Process p){
+	public void addToTimeline(String p){
 		timeline.add(p);
 	}
 	
 	//Print timeline for the processes in order
 	public void printTimeline(){
-		for(Process p : timeline){
-			System.out.print(p.getProcessName() + " ");
+		int quanta = 1;
+		for(String p : timeline){
+			System.out.println("Quanta " + quanta + " : " + p);
+			quanta++;
 		}
 	}
 	
