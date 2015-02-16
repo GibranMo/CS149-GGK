@@ -1,6 +1,4 @@
-import java.util.*;
-
-
+import java.util.ArrayList;
 
 public class Driver {
     //Number of run simulations
@@ -32,12 +30,12 @@ public class Driver {
             QuantaTimeLine run = new QuantaTimeLine();
             
             //Run all algorithms
-            run.FCFS(readyQueue);
-            run.SJF(readyQueue);
-            run.SRT(readyQueue);
-            run.RR(readyQueue);
-            run.HPFPre(readyQueue);
-            run.HPFNonPre(readyQueue);
+            run.FCFS(deepCopy(readyQueue));
+            run.SJF(deepCopy(readyQueue));
+            run.SRT(deepCopy(readyQueue));
+            run.RR(deepCopy(readyQueue));
+            run.HPFPre(deepCopy(readyQueue));
+            run.HPFNonPre(deepCopy(readyQueue));
             
             //Output results for all algorithms
             System.out.println("FCFS Results:");
@@ -169,6 +167,18 @@ public class Driver {
     	}
     }
     
+    //Used to create deep copies of each simulated set of processes
+    public static ArrayList<Process> deepCopy(ArrayList<Process> source){
+    	ArrayList<Process> copy = new ArrayList<Process>();
+    	for(Process p : source){
+    		copy.add(new Process(p));
+    	}
+    	return copy;
+    }
+    
+    /************************************************************************************/
+    /*************** TO BE REMOVED ONCE WE ARE FINISHED WITH TESTING ********************/
+    /************************************************************************************/
     public static ArrayList<Process> getTestProcesses(){
     	ArrayList<Process> processes = new ArrayList<Process>();
     	
@@ -211,15 +221,22 @@ public class Driver {
         populateProcesses();
         //readyQueue = getTestProcesses(); 
         
-        ArrayList <Process> queue = readyQueue;
         //First simulation run
         QuantaTimeLine run1 = new QuantaTimeLine();
+        
+        /*System.out.println("FCFS");
+        run1.FCFS(deepCopy(readyQueue));
+        printResults(run1.getFCFSResults());*/
+        
         System.out.println("SRT");
-        run1.SRT(queue);
+        run1.SRT(deepCopy(readyQueue));
         printResults(run1.getSRTResults());
-        //System.out.println("RR");
-        //run1.RR(queue);
-        //printResults(run1.getRRResults());
+        
+        System.out.println("RR");
+        run1.RR(deepCopy(readyQueue));
+        printResults(run1.getRRResults());
     }
-    
+    /************************************************************************************/
+    /*************** TO BE REMOVED ONCE WE ARE FINISHED WITH TESTING ********************/
+    /************************************************************************************/
 }

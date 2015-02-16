@@ -1,5 +1,3 @@
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Random;
 
 public class Process {
@@ -27,10 +25,18 @@ public class Process {
         
         //give a Random arrival Time
         double lowerArr = 0;
-        double upperArr = 99;
+        double upperArr = 99;//99
         double resultArr = Math.random() * (upperArr - lowerArr) + lowerArr;
         
         this.arrivalTime = (float) resultArr;
+    }
+    
+    //Deep copy constructor
+    public Process(Process p){
+    	this.arrivalTime = p.arrivalTime;
+    	this.expRunTime = p.expRunTime;
+    	this.priority = p.priority;
+    	this.processName = p.processName;
     }
     
     public float getExpRunTime() {
@@ -62,7 +68,7 @@ public class Process {
     }
     
     /* THE FOLLOWING METHODS ARE USED FOR PREEMPTIVE ALGORITHMS */
-    
+   
     //decrement run time
     public void decrementExpRunTime(){
     	this.expRunTime--;

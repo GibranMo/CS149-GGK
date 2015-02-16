@@ -62,11 +62,6 @@ public class SimResults {
 		return numOfCompletedProcesses;
 	}
 	
-	//Return timeline queue
-	public Queue<String> getTimeline(){
-		return timeline;
-	}
-	
 	//Add a process to the timeline
 	public void addToTimeline(String p){
 		timeline.add(p);
