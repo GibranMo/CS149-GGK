@@ -84,9 +84,12 @@ public class QuantaTimeLine {
                     }
                     FCFSResults.addToTimeline(listOfProcesses.get(i).getProcessName());
                     j++;
-                    turnAroundSum += j;
+                    
+                    
+                    //turnAroundSum += j;
+                    //System.out.println("<><> " + turnAroundSum);
                 }
-                
+                turnAroundSum += j;
                 i++;
                 continue;
             }
@@ -95,9 +98,11 @@ public class QuantaTimeLine {
             j++;
             
             turnAroundSum += j;
+            //System.out.println("<><> " + turnAroundSum);
             
         }
         
+        //System.out.println(">>" + sumOfCompletedProcesses);
         FCFSResults.setNumOfCompletedProcesses(sumOfCompletedProcesses);
         
         
@@ -108,6 +113,8 @@ public class QuantaTimeLine {
             sum2 += setWaitingTimes.get(k);
         
         FCFSResults.setSumOfWaiting(sumWait);
+        FCFSResults.setSumOfResponse(sumWait);
+        
         
     }
     
@@ -152,13 +159,8 @@ public class QuantaTimeLine {
                 //System.out.println(">>" + listOfProcesses.get(m).getProcessName() + "-" + listOfProcesses.get(m).getArrivalTime());
                 if (arrTime <= j) {
                     
-                    
-                    //System.out.println( listOfProcesses.get(m).getProcessName() + " arrTime: " + debugTime + " <= j: " + j);
-                    
                     arrivedProcesses.add(listOfProcesses.get(m));
                     indexesToRemove.add(m);
-                    
-                    
                 }
                 m++;
             }
@@ -196,8 +198,8 @@ public class QuantaTimeLine {
                     {
                         quantaLine.add(new Quanta());
                     }
-                    //System.out.println("Process Name: "+ p.getProcessName());
-                    //System.out.println("JJ: " + j);
+                    
+                    
                     SJFResults.addToTimeline(p.getProcessName());;
                     j++;
                 }
@@ -206,12 +208,13 @@ public class QuantaTimeLine {
                     break;
             }
             
-            //System.out.println("END");
+            
         }
         
         SJFResults.setNumOfCompletedProcesses(completedProcesses);
         SJFResults.setSumOfTurnaround(turnAroundTime);
         SJFResults.setSumOfWaiting(waitingTime);
+        SJFResults.setSumOfResponse(waitingTime);
         
         
     }
