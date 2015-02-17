@@ -235,6 +235,14 @@ public class Driver {
         System.out.println("RR");
         run1.RR(deepCopy(readyQueue));
         printResults(run1.getRRResults());
+        
+        System.out.println("HPFNonPre");
+        run1.HPFNonPre(deepCopy(readyQueue));
+        printResults(run1.getHPFNonPreResults());
+        
+        System.out.println("HPFPre");
+        run1.HPFPre(deepCopy(readyQueue));
+        printResults(run1.getHPFPreResults());
     }
     /************************************************************************************/
     /*************** TO BE REMOVED ONCE WE ARE FINISHED WITH TESTING ********************/

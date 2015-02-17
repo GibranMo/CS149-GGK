@@ -398,13 +398,221 @@ public class QuantaTimeLine {
     }
     
     //TODO: Graeme
-    public void HPFPre (ArrayList<Process> processes){
+    public void HPFPre (ArrayList<Process> readyQueue){
+    	Deque<Process> priority1 = new LinkedList<Process>();
+    	Deque<Process> priority2 = new LinkedList<Process>();
+    	Deque<Process> priority3 = new LinkedList<Process>();
+    	Deque<Process> priority4 = new LinkedList<Process>();
         
+        //Sort by arrival time
+        sortByArrivalTime(readyQueue);
+        
+        //Create process queue with estimated run time for 100 quanta only
+        Queue<Process> processQueue = getBatchProcesses(readyQueue);
+        
+        Driver.printStuff(processQueue);
+        
+        //Initialize for sim results
+        HPFPreResults = new SimResults();
+        double turnaroundT = 0.0, responseT = 0.0;
+        int throughput = 0, quantaCount = 1, waitingT = 0;
+        
+        Process currP = null;
+        int highP = 100;
+        
+        while(quantaCount < QUANTA_LIMIT){
+            
+        	while (!processQueue.isEmpty()) {
+        		if ((int)Math.ceil(processQueue.peek().getArrivalTime()) > quantaCount) break;
+        		
+        		Process nextP = processQueue.poll();
+        		int priority = nextP.getPriority();
+        		
+        		if (priority < highP) highP = priority;
+        		
+        		switch (priority) {
+        		case 1:
+        			priority1.offer(nextP);
+        			break;
+        		case 2:
+        			priority2.offer(nextP);
+        			break;
+        		case 3:
+        			priority3.offer(nextP);
+        			break;
+        		case 4:
+        			priority4.offer(nextP);        			
+        		}
+        	}
+            
+        	if (currP == null) {
+        		switch(highP) {
+        		case 1:
+        			currP = priority1.poll();
+        			break;
+        		case 2:
+        			currP = priority2.poll();
+        			break;
+        		case 3:
+        			currP = priority3.poll();
+        			break;
+        		case 4:
+        			currP = priority4.poll();
+        			break;
+        		default:
+        			HPFPreResults.addToTimeline("- idle -");
+                    quantaCount++;
+                    continue;
+        		}
+        	}
+        	else if (highP < currP.getPriority()) {
+        		currP.pause(quantaCount);
+        		switch (currP.getPriority()) {
+        		case 1:
+        			priority1.offerFirst(currP);
+        			break;
+        		case 2:
+        			priority2.offerFirst(currP);
+        			break;
+        		case 3:
+        			priority3.offerFirst(currP);
+        			break;
+        		case 4:
+        			priority4.offerFirst(currP);
+        		}
+        		
+        		switch (highP) {
+        		case 1:
+        			currP = priority1.poll();
+        			break;
+        		case 2:
+        			currP = priority2.poll();
+        			break;
+        		case 3:
+        			currP = priority3.poll();
+        			break;
+        		case 4:
+        			currP = priority4.poll();
+        		}
+        	}
+        	
+        	if (currP.isPaused()) {
+        		waitingT += quantaCount - currP.getPausedTime();
+                currP.resume();
+        	}
+        	else {
+        		responseT += quantaCount - (int)currP.getArrivalTime();
+                waitingT += quantaCount - (int)currP.getArrivalTime();
+        	}
+            
+            //decrement run time, add to time line, and increment to next quanta
+            currP.decrementExpRunTime();
+            HPFPreResults.addToTimeline(currP.getProcessName());
+            quantaCount++;
+            
+            if ((int)Math.ceil(currP.getExpRunTime()) <= 0) {
+            	//calculate turnaround time and throughput
+                throughput++;
+                turnaroundT += (quantaCount - 1) - currP.getArrivalTime();// one less because it was paused in previous quanta
+                currP = null;
+                if (!priority1.isEmpty()) highP = 1;
+            	else if (!priority2.isEmpty()) highP = 2;
+            	else if (!priority3.isEmpty()) highP = 3;
+            	else if (!priority4.isEmpty()) highP = 4;
+            	else highP = 100;
+            }
+        }
+        
+        if (currP != null) {
+        	while ((int)Math.ceil(currP.getExpRunTime()) > 0) {
+        		//decrement run time, add to time line, and increment to next quanta
+                currP.decrementExpRunTime();
+                HPFPreResults.addToTimeline(currP.getProcessName());
+                quantaCount++;
+        	}
+        	
+        	throughput++;
+            turnaroundT += (quantaCount - 1) - currP.getArrivalTime();// one less because it was paused in previous quanta
+        }
+        
+        HPFPreResults.setNumOfCompletedProcesses(throughput);
+        HPFPreResults.setSumOfTurnaround(turnaroundT);
+        HPFPreResults.setSumOfWaiting(waitingT);
+        HPFPreResults.setSumOfResponse(responseT);
     }
     
     //TODO: Graeme
-    public void HPFNonPre (ArrayList<Process> processes){
+    public void HPFNonPre (ArrayList<Process> readyQueue){
+    	Queue<Process> priority1 = new LinkedList<Process>();
+        Queue<Process> priority2 = new LinkedList<Process>();
+        Queue<Process> priority3 = new LinkedList<Process>();
+        Queue<Process> priority4 = new LinkedList<Process>();
         
+        //Sort by arrival time
+        sortByArrivalTime(readyQueue);
+        
+        //Create process queue with estimated run time for 100 quanta only
+        Queue<Process> processQueue = getBatchProcesses(readyQueue);
+        
+        Driver.printStuff(processQueue);
+        
+        //Initialize for sim results
+        HPFNonPreResults = new SimResults();
+        double turnaroundT = 0.0, responseT = 0.0;
+        int throughput = 0, quantaCount = 1, waitingT = 0;
+        
+        while(quantaCount < QUANTA_LIMIT){
+            
+        	while (!processQueue.isEmpty()) {
+        		if ((int)Math.ceil(processQueue.peek().getArrivalTime()) > quantaCount) break;
+        		
+        		Process nextP = processQueue.poll();
+        		switch (nextP.getPriority()) {
+        		case 1:
+        			priority1.offer(nextP);
+        			break;
+        		case 2:
+        			priority2.offer(nextP);
+        			break;
+        		case 3:
+        			priority3.offer(nextP);
+        			break;
+        		case 4:
+        			priority4.offer(nextP);        			
+        		}
+        	}
+            
+        	Process currP = null;
+        	if (!priority1.isEmpty()) currP = priority1.poll();
+        	else if (!priority2.isEmpty()) currP = priority2.poll();
+        	else if (!priority3.isEmpty()) currP = priority3.poll();
+        	else if (!priority4.isEmpty()) currP = priority4.poll();
+        	else {
+        		HPFNonPreResults.addToTimeline("- idle -");
+                quantaCount++;
+                continue;
+            }
+            
+        	responseT += quantaCount - (int)currP.getArrivalTime();
+            waitingT += quantaCount - (int)currP.getArrivalTime();
+            
+            //process current job until complete
+            while((int)Math.ceil(currP.getExpRunTime()) > 0){
+                //decrement run time, add to time line, and increment to next quanta
+                currP.decrementExpRunTime();
+                HPFNonPreResults.addToTimeline(currP.getProcessName());
+                quantaCount++;
+            }
+            
+            //calculate turnaround time and throughput
+            throughput++;
+            turnaroundT += (quantaCount - 1) - currP.getArrivalTime();// one less because it was paused in previous quanta
+        }
+        
+        HPFNonPreResults.setNumOfCompletedProcesses(throughput);
+        HPFNonPreResults.setSumOfTurnaround(turnaroundT);
+        HPFNonPreResults.setSumOfWaiting(waitingT);
+        HPFNonPreResults.setSumOfResponse(responseT);
     }
     
     //Sort array list by arrival time
