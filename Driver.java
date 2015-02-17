@@ -47,9 +47,9 @@ public class Driver {
             System.out.println("HPF PREEMPTIVE RESULTS:");
             run.HPFPre(deepCopy(readyQueue));
             printResults(run.getHPFPreResults());
-            //System.out.println("HPF NON-PREEMPTIVE RESULTS:");
-            //run.HPFNonPre(deepCopy(readyQueue));
-            //printResults(run.getHPFNonPreResults());
+            System.out.println("HPF NON-PREEMPTIVE RESULTS:");
+            run.HPFNonPre(deepCopy(readyQueue));
+            printResults(run.getHPFNonPreResults());
             
             //Save results for all algorithms to calculate overall stats
             FCFSOverallResults = setOverallStats(FCFSOverallResults, run.getFCFSResults());
@@ -57,7 +57,7 @@ public class Driver {
             SRTOverallResults = setOverallStats(SRTOverallResults, run.getSRTResults());
             RROverallResults = setOverallStats(RROverallResults, run.getRRResults());
             HPFPreOverallResults = setOverallStats(HPFPreOverallResults, run.getHPFPreResults());
-            //HPFNonPreOverallResults = setOverallStats(HPFNonPreOverallResults, run.getHPFNonPreResults());
+            HPFNonPreOverallResults = setOverallStats(HPFNonPreOverallResults, run.getHPFNonPreResults());
     	}
     	
     	//Print overall average stats
