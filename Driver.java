@@ -3,14 +3,13 @@ import java.util.ArrayList;
 public class Driver {
     //Number of run simulations
 	private final static int NUM_OF_SIMULATION = 5;
-    private final static int NUM_OF_PROCESSES = 75;//75;
+    private final static int NUM_OF_PROCESSES = 100;//75;
     private static ArrayList <Process> readyQueue;
     
     public static void main (String args []) {
     	
-    	testRun();
+    	//testRun();
     	
-    	/*
     	//Used to calculate sum of overall stats
     	OverallResults FCFSOverallResults = new Driver.OverallResults();
     	OverallResults SJFOverallResults = new Driver.OverallResults();
@@ -21,35 +20,36 @@ public class Driver {
     	
     	//Run simulations
     	for(int i = 1; i <= NUM_OF_SIMULATION; i++){
+    		
+    		System.out.println("SIMULATION " + i + "\n____________\n");
     		//Generate processes and print
             populateProcesses();
-            System.out.println("Random Generated Processes:\n");
-            printStuff(readyQueue);
-            
-            System.out.println("SIMULATION " + i + "\n____________\n");
+            ArrayList<Process> pPrint = deepCopy(readyQueue);
+            QuantaTimeLine.sortByArrivalTime(pPrint);
+            System.out.println("RANDOM GENERATED PROCESSES:\n");
+            printStuff(pPrint);
             QuantaTimeLine run = new QuantaTimeLine();
             
             //Run all algorithms
-            run.FCFS(deepCopy(readyQueue));
-            run.SJF(deepCopy(readyQueue));
-            run.SRT(deepCopy(readyQueue));
-            run.RR(deepCopy(readyQueue));
-            run.HPFPre(deepCopy(readyQueue));
-            run.HPFNonPre(deepCopy(readyQueue));
-            
             //Output results for all algorithms
-            System.out.println("FCFS Results:");
+            System.out.println("FCFS RESULTS:");
+            run.FCFS(deepCopy(readyQueue));
             printResults(run.getFCFSResults());
-            System.out.println("SJF Results:");
+            System.out.println("SJF RESULTS:");
+            run.SJF(deepCopy(readyQueue));
             printResults(run.getSJFResults());
-            System.out.println("SRT Results:");
+            System.out.println("SRT RESULTS:");
+            run.SRT(deepCopy(readyQueue));
             printResults(run.getSRTResults());
-            System.out.println("RR Results:");
+            System.out.println("RR RESULTS:");
+            run.RR(deepCopy(readyQueue));
             printResults(run.getRRResults());
-            System.out.println("HPF Preemptive Results:");
+            System.out.println("HPF PREEMPTIVE RESULTS:");
+            run.HPFPre(deepCopy(readyQueue));
             printResults(run.getHPFPreResults());
-            System.out.println("HPF Non-preemptive Results:");
-            printResults(run.getHPFNonPreResults());
+            //System.out.println("HPF NON-PREEMPTIVE RESULTS:");
+            //run.HPFNonPre(deepCopy(readyQueue));
+            //printResults(run.getHPFNonPreResults());
             
             //Save results for all algorithms to calculate overall stats
             FCFSOverallResults = setOverallStats(FCFSOverallResults, run.getFCFSResults());
@@ -57,7 +57,7 @@ public class Driver {
             SRTOverallResults = setOverallStats(SRTOverallResults, run.getSRTResults());
             RROverallResults = setOverallStats(RROverallResults, run.getRRResults());
             HPFPreOverallResults = setOverallStats(HPFPreOverallResults, run.getHPFPreResults());
-            HPFNonPreOverallResults = setOverallStats(HPFNonPreOverallResults, run.getHPFNonPreResults());
+            //HPFNonPreOverallResults = setOverallStats(HPFNonPreOverallResults, run.getHPFNonPreResults());
     	}
     	
     	//Print overall average stats
@@ -85,7 +85,7 @@ public class Driver {
     	System.out.println("\nHPF Non-Preemptive AVG Turnaround Time: " + HPFNonPreOverallResults.getAvgTurnaroundTime());
     	System.out.println("HPF Non-Preemptive AVG Waiting Time:\t" + HPFNonPreOverallResults.getAvgWaitingTime());
     	System.out.println("HPF Non-Preemptive AVG Response Time:\t" + HPFNonPreOverallResults.getAvgResponsetime());
-    	System.out.println("HPF Non-Preemptive AVG Throughput:\t" + HPFNonPreOverallResults.getAvgThroughput());*/
+    	System.out.println("HPF Non-Preemptive AVG Throughput:\t" + HPFNonPreOverallResults.getAvgThroughput());
     	
     }
     
@@ -110,7 +110,6 @@ public class Driver {
     }
     
     //DebuggingFunction: right now prints arrival time of processes
-    //KEITH: I converted this method to a generic print method for any data structure
     public static void printStuff(Iterable<Process> processes)  {
         
         int sumExpRunTime  = 0;
@@ -126,15 +125,14 @@ public class Driver {
             System.out.format("%s\t%08.5f\t%08.5f\t%d\n", name, arrival, runTime, priority);
         }
         
-        System.out.println("\nTotal runtime: "+ sumExpRunTime + "\n\n");
+        //System.out.println("\nTotal runtime: "+ sumExpRunTime + "\n\n");
+        System.out.println("\n\n");
     }
     
     //Print function to output simulation results and statistics
     public static void printResults(SimResults results){
         //print timeline
-        System.out.println("Time line: ");
         results.printTimeline();
-        System.out.println();
         
         //print calculated stats
         System.out.println("Average turnaround time:\t" + results.getAverageTurnaround());
@@ -175,68 +173,4 @@ public class Driver {
     	}
     	return copy;
     }
-    
-    /************************************************************************************/
-    /*************** TO BE REMOVED ONCE WE ARE FINISHED WITH TESTING ********************/
-    /************************************************************************************/
-    public static ArrayList<Process> getTestProcesses(){
-    	ArrayList<Process> processes = new ArrayList<Process>();
-    	
-    	Process p = new Process("P1");
-    	
-    	p.setArrivalTime(0);
-    	p.setExpRunTime(10);
-    	p.setPriority(3);
-    	processes.add(p);
-    	
-    	p = new Process("P2");
-    	p.setArrivalTime(0);
-    	p.setExpRunTime(1);
-    	p.setPriority(1);
-    	processes.add(p);
-    	
-    	p = new Process("P3");
-    	p.setArrivalTime(0);
-    	p.setExpRunTime(2);
-    	p.setPriority(3);
-    	processes.add(p);
-    	
-    	p = new Process("P4");
-    	p.setArrivalTime(0);
-    	p.setExpRunTime(1);
-    	p.setPriority(4);
-    	processes.add(p);
-    	
-    	p = new Process("P5");
-    	p.setArrivalTime(0);
-    	p.setExpRunTime(5);
-    	p.setPriority(2);
-    	processes.add(p);
-    	
-    	return processes;
-    }
-    
-    public static void testRun(){
-		//Generate processes and print
-        populateProcesses();
-        //readyQueue = getTestProcesses(); 
-        
-        //First simulation run
-        QuantaTimeLine run1 = new QuantaTimeLine();
-        
-        /*System.out.println("FCFS");
-        run1.FCFS(deepCopy(readyQueue));
-        printResults(run1.getFCFSResults());*/
-        
-        System.out.println("SRT");
-        run1.SRT(deepCopy(readyQueue));
-        printResults(run1.getSRTResults());
-        
-        System.out.println("RR");
-        run1.RR(deepCopy(readyQueue));
-        printResults(run1.getRRResults());
-    }
-    /************************************************************************************/
-    /*************** TO BE REMOVED ONCE WE ARE FINISHED WITH TESTING ********************/
-    /************************************************************************************/
 }
