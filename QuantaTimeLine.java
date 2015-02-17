@@ -40,13 +40,10 @@ public class QuantaTimeLine {
     public void FCFS (ArrayList<Process> listOfProcesses){
         
         sortByArrivalTime(listOfProcesses);
-        
         FCFSResults = new SimResults();
         
         ArrayList<Integer> setTurnAroundTimes = new ArrayList <Integer> ();
         ArrayList<Integer> setWaitingTimes = new ArrayList <Integer> ();
-        
-        
         
         int i = 0; //for indexing the ready process queue
         int j = 0; //for indexing the quanta time line. At the beginning, it will be synchronized with 'i' but then it will
@@ -115,14 +112,11 @@ public class QuantaTimeLine {
         FCFSResults.setSumOfWaiting(sumWait);
         FCFSResults.setSumOfResponse(sumWait);
         
-        
     }
     
-    
-    
+    //Shortest Job First
     public void SJF (ArrayList<Process> listOfProcesses){
-        
-    	   
+    	
         SJFsort(listOfProcesses); //sorted by ascending expected runtime
         SJFResults = new SimResults();
         
@@ -132,12 +126,7 @@ public class QuantaTimeLine {
         
         ArrayList<Integer> setTurnAroundTimes = new ArrayList <Integer> ();
         ArrayList<Integer> setWaitingTimes = new ArrayList <Integer> ();
-        
-        
         ArrayList<Integer> indexesToRemove = new ArrayList <Integer> ();
-        
-        
-        
         Queue <Process> arrivedProcesses = new LinkedList <Process> ();
         
         int j = 0;
@@ -164,7 +153,6 @@ public class QuantaTimeLine {
                 }
                 m++;
             }
-            
             
             //remove processes
             for (int i = 0; i < indexesToRemove.size(); i++){
@@ -207,114 +195,108 @@ public class QuantaTimeLine {
                 if (j >= QUANTA_LIMIT)
                     break;
             }
-            
-            
         }
         
         SJFResults.setNumOfCompletedProcesses(completedProcesses);
         SJFResults.setSumOfTurnaround(turnAroundTime);
         SJFResults.setSumOfWaiting(waitingTime);
         SJFResults.setSumOfResponse(waitingTime);
-        
-        
     }
     
-    //TODO: Keith --- COMPLETED
+    //Shortest Remaining Time
     public void SRT (ArrayList<Process> readyQueue){
-        
+    	
         //Sort by arrival time
         sortByArrivalTime(readyQueue);
         
         //Create process queue with estimated run time for 100 quanta only
-        Queue<Process> processQueue = getBatchProcesses(readyQueue);
-        
-        Driver.printStuff(processQueue);
+    	Queue<Process> processQueue = getBatchProcesses(readyQueue);
+    	
+    	//Driver.printStuff(processQueue);
         
         //Convert readyQueue to actual queue structure
-        Deque<Process> processes = convertToDeque(processQueue);
+    	Deque<Process> processes = convertToDeque(processQueue);
         
         //Used to store suspended processes
         Stack<Process> suspendedProcesses = new Stack<Process>();
         
         //Initialize for sim results
-        SRTResults = new SimResults();
+    	SRTResults = new SimResults();
         double turnaroundT = 0.0, responseT = 0.0;
-        int throughput = processes.size(), quantaCount = 1, waitingT = 0;
+        int throughput = processes.size(), quantaCount = 0, waitingT = 0;
         
         while(processes.size() > 0 && quantaCount < QUANTA_LIMIT){
-            
-            Process currP = processes.poll();
-            
-            //idling due to no jobs to process
-            while((int)currP.getArrivalTime() > quantaCount){
-                SRTResults.addToTimeline("- idle -");
-                quantaCount++;
-            }
-            
-            //if job has never been paused, it means its the first time its being processed
-            if(!currP.isPaused()){
-                
-                //don't include response time for job processed at first quanta since it should be 0 time response
-                if(quantaCount != 1){
-                    responseT += quantaCount - (int)currP.getArrivalTime();
-                    waitingT += quantaCount - (int)currP.getArrivalTime();
-                }
-            }
-            
-            //process current job until complete or a job with a shorter running time arrives
-            while((int)Math.ceil(currP.getExpRunTime()) > 0){
-                
-                //if job was previously suspended, update waiting time on resume
-                if(currP.isPaused()){
-                    waitingT += quantaCount - currP.getPausedTime();
-                    currP.resume();
-                }
-                
-                //decrement run time, add to time line, and increment to next quanta
-                currP.decrementExpRunTime();
-                SRTResults.addToTimeline(currP.getProcessName());
-                quantaCount++;
-                
-                //check if there is another job
-                if(processes.size() > 0){
-                    
-                    //if next job has arrived in ready queue, check if next job's expected run time is shorter than current job run time
-                    if((int)processes.peek().getArrivalTime() <= quantaCount && processes.peek().getExpRunTime() < currP.getExpRunTime()){
-                        
-                        //suspends current job and stores it for later
-                        currP.pause(quantaCount);// one less because it was paused in previous quanta
-                        suspendedProcesses.push(currP);
-                        break;
-                    }
-                }
-                
-                
-                //Job is completed, check if there are previous
-                if((int)Math.ceil(currP.getExpRunTime()) <= 0){
-                    
-                    //calculate turnaround time
-                    turnaroundT += (quantaCount - 1) - currP.getArrivalTime();// one less because it was paused in previous quanta
-                    
-                    //Check if there is a suspended job
-                    if(suspendedProcesses.size() > 0){
-                        
-                        //Check if there's another job to compare with suspended job
-                        if(processes.size() > 0){
-                            
-                            //Check if suspended job's run time is shorter than next job's run time
-                            if(suspendedProcesses.peek().getExpRunTime() < processes.peek().getExpRunTime()){
-                                
-                                //suspended job has priority if shorter run time and will be resumed
-                                processes.addFirst(suspendedProcesses.pop());
-                            }
-                        }else{
-                            //suspended job has priority if shorter run time and will be resumed
-                            processes.addFirst(suspendedProcesses.pop());
-                        }
-                        
-                    }
-                }
-            }
+        	
+        	Process currP = processes.poll();
+        	
+        	//idling due to no jobs to process
+        	while((int)currP.getArrivalTime() > quantaCount){
+        		SRTResults.addToTimeline("- idle -");
+    			quantaCount++;
+        	}
+        	
+        	//if job has never been paused, it means its the first time its being processed
+        	if(!currP.isPaused()){
+        		
+        		//don't include response time for job processed at first quanta since it should be 0 time response
+        		if(quantaCount != 1){
+        			responseT += quantaCount - (int)currP.getArrivalTime();
+        			waitingT += quantaCount - (int)currP.getArrivalTime();
+        		}
+        	}
+        	
+        	//process current job until complete or a job with a shorter running time arrives
+        	while((int)Math.ceil(currP.getExpRunTime()) > 0){
+        		
+        		//if job was previously suspended, update waiting time on resume
+        		if(currP.isPaused()){
+        			waitingT += quantaCount - currP.getPausedTime();
+        			currP.resume();
+        		}
+        		
+        		//check if there is another job
+        		if(processes.size() > 0){
+        			//if next job has arrived in ready queue, check if next job's expected run time is shorter than current job run time
+            		if(processes.peek().getArrivalTime() <= quantaCount && processes.peek().getExpRunTime() < currP.getExpRunTime()){
+            			
+            			//suspends current job and stores it for later
+            			currP.pause(quantaCount);// one less because it was paused in previous quanta
+            			suspendedProcesses.push(currP);
+            			break;
+            		}
+        		}
+        		
+        		//decrement run time, add to time line, and increment to next quanta
+        		currP.decrementExpRunTime();
+        		SRTResults.addToTimeline(currP.getProcessName());
+        		quantaCount++;
+        		
+        		//Job is completed, check if there are previous
+        		if((int)Math.ceil(currP.getExpRunTime()) <= 0){
+        			
+        			//calculate turnaround time
+        			turnaroundT += (quantaCount - 1) - currP.getArrivalTime();// one less because it was paused in previous quanta
+        			
+        			//Check if there is a suspended job
+        			if(suspendedProcesses.size() > 0){
+        				
+        				//Check if there's another job to compare with suspended job
+        				if(processes.size() > 0){
+        					
+        					//Check if suspended job's run time is shorter than next job's run time
+            				if(suspendedProcesses.peek().getExpRunTime() < processes.peek().getExpRunTime()){
+            					
+            					//suspended job has priority if shorter run time and will be resumed
+                				processes.addFirst(suspendedProcesses.pop());
+            				}
+        				}else{
+        					//suspended job has priority if shorter run time and will be resumed
+            				processes.addFirst(suspendedProcesses.pop());
+        				}
+        				
+        			}
+        		}
+        	}
         }
         
         SRTResults.setNumOfCompletedProcesses(throughput);
@@ -323,73 +305,75 @@ public class QuantaTimeLine {
         SRTResults.setSumOfResponse(responseT);
     }
     
-    //TODO: Keith --- COMPLETED
+ 
+    
+    //Round Robin
     public void RR (ArrayList<Process> readyQueue){
-        
-        //max quantum time
-        final int TIME_QUANTUM = 1;
-        
-        //Sort by arrival time
-        sortByArrivalTime(readyQueue);
-        
-        //Create process queue with estimated run time
-        Queue<Process> processes = getBatchProcesses(readyQueue);
-        
-        //Print random generated processes for simulation
-        Driver.printStuff(readyQueue);
-        
-        //Initialize results set
+    	
+    	//max quantum time
+    	final int TIME_QUANTUM = 1;
+    	
+    	//Sort by arrival time
+    	sortByArrivalTime(readyQueue);
+    	
+    	//Create process queue with estimated run time
+    	Queue<Process> processes = getBatchProcesses(readyQueue);
+    	
+    	//Print random generated processes for simulation
+    	//Driver.printStuff(readyQueue);
+    	
+    	//Initialize results set
         RRResults = new SimResults();
         double turnaroundT = 0.0, responseT = 0.0;
         int throughput = processes.size(), quantaCount = 1, waitingT = 0;
         
         while(processes.size() > 0){
-            
-            Process p = processes.poll();
-            
-            //idling due to no jobs to process
-            while((int)p.getArrivalTime() > quantaCount){
-                RRResults.addToTimeline("- idle -");
-                quantaCount++;
-            }
-            
-            if(p.isPaused()){
-                //if job was previously paused, add to waiting time
-                waitingT += quantaCount - p.getPausedTime();
-                p.resume();
-            }else if(quantaCount != 1) {
-                //if job was not previously paused (and its' not the first quanta), its the first time the job is processed
-                responseT += quantaCount - (int)p.getArrivalTime();
-                waitingT += (quantaCount - 1) - (int)p.getArrivalTime();
-            }
-            
-            //process the job based on quantum limit
-            int quantumLimit = 0;
-            while(true){
-                
-                if((int)Math.ceil(p.getExpRunTime()) > 0){
-                    //if time quantum is reached, pause and move current job to the end of the queue
-                    if(quantumLimit == TIME_QUANTUM && processes.size() > 0){
-                        p.pause(quantaCount);
-                        processes.add(p);
-                        break;
-                    }
-                    
-                    //add job name to time line, decrement job expected run time
-                    RRResults.addToTimeline(p.getProcessName());
-                    p.decrementExpRunTime();
-                    quantaCount++;
-                    quantumLimit++;
-                }
-                else{
-                    //current job is completed, add to turn around time
-                    turnaroundT += (quantaCount - 1) - p.getArrivalTime();// one less because it was paused in previous quanta
-                    break;
-                }
-            }
-            
+        	
+        	Process p = processes.poll();
+        	
+        	//idling due to no jobs to process
+        	while((int)p.getArrivalTime() > quantaCount){
+        		RRResults.addToTimeline("- idle -");
+    			quantaCount++;
+        	}
+        	
+        	if(p.isPaused()){
+        		//if job was previously paused, add to waiting time
+        		waitingT += quantaCount - p.getPausedTime();
+        		p.resume();
+        	}else if(quantaCount != 1) {
+        		//if job was not previously paused (and its' not the first quanta), its the first time the job is processed
+        		responseT += quantaCount - (int)p.getArrivalTime();
+        		waitingT += (quantaCount - 1) - (int)p.getArrivalTime();
+        	}
+        	
+    		//process the job based on quantum limit
+			int quantumLimit = 0;
+			while(true){
+				
+				if((int)Math.ceil(p.getExpRunTime()) > 0){
+					//if time quantum is reached, pause and move current job to the end of the queue
+					if(quantumLimit == TIME_QUANTUM && processes.size() > 0){
+						p.pause(quantaCount);
+						processes.add(p);
+						break;
+					}
+					
+					//add job name to time line, decrement job expected run time
+					RRResults.addToTimeline(p.getProcessName());
+					p.decrementExpRunTime();
+					quantaCount++;
+					quantumLimit++;
+				}
+				else{
+					//current job is completed, add to turn around time
+					turnaroundT += (quantaCount - 1) - p.getArrivalTime();// one less because it was paused in previous quanta
+					break;
+				}
+			}
+			
         }
-        
+      
         //Set stats for results calculation
         RRResults.setNumOfCompletedProcesses(throughput);
         RRResults.setSumOfTurnaround(turnaroundT);
@@ -397,7 +381,7 @@ public class QuantaTimeLine {
         RRResults.setSumOfResponse(responseT);
     }
     
-    //TODO: Graeme
+    //Highest Priority First Preemptive
     public void HPFPre (ArrayList<Process> readyQueue){
     	Deque<Process> priority1 = new LinkedList<Process>();
     	Deque<Process> priority2 = new LinkedList<Process>();
@@ -541,7 +525,6 @@ public class QuantaTimeLine {
         HPFPreResults.setSumOfResponse(responseT);
     }
     
-    //TODO: Graeme
     public void HPFNonPre (ArrayList<Process> readyQueue){
     	Queue<Process> priority1 = new LinkedList<Process>();
         Queue<Process> priority2 = new LinkedList<Process>();
@@ -615,8 +598,17 @@ public class QuantaTimeLine {
         HPFNonPreResults.setSumOfResponse(responseT);
     }
     
+    private static void  HPFnonPHelper(SimResults sr, int additional, String pName)
+    {
+    	for (int i = 1; i <= additional; i++ )
+    	 {
+    		sr.addToTimeline(pName);
+    	 }
+    		
+    }
+    
     //Sort array list by arrival time
-    private static void sortByArrivalTime(ArrayList<Process> processes) {
+    public static void sortByArrivalTime(ArrayList<Process> processes) {
         //Implement Comparator Interface so I can sort Processes by Arrival Time
         Collections.sort(processes, new Comparator<Process> () {
             @Override public int compare(Process p1, Process p2) {
@@ -628,7 +620,7 @@ public class QuantaTimeLine {
     //Sorts the processes in ascending order of expected runtime.
     public static void SJFsort(ArrayList<Process> processes) {
         //Implement Comparator Interface so I can sort Processes by Arrival Time
-        Collections.sort(processes, new Comparator<Process> () {
+        Collections.sort(processes, new Comparator<Process> () { 
             @Override public int compare(Process p1, Process p2) {
                 return Float.compare(p1.getExpRunTime(), p2.getExpRunTime());
             }
@@ -637,26 +629,41 @@ public class QuantaTimeLine {
     
     //Helper function to approximate number of processes for 100 quanta based on estimate of expected run time
     private static Queue<Process> getBatchProcesses(ArrayList<Process> processes){
-        Queue<Process> validProcesses = new LinkedList<Process>();
-        int sumOfRuntime = 0, pCount = 0;
-        
-        for(Process p : processes){
-            if(sumOfRuntime >= QUANTA_LIMIT){
-                break;
-            }
-            sumOfRuntime += Math.ceil(p.getExpRunTime());
-            validProcesses.add(p);
-        }
-        return validProcesses;
+    	Queue<Process> validProcesses = new LinkedList<Process>();
+    	int sumOfRuntime = 0, pCount = 0;
+    	
+    	for(Process p : processes){
+    		if(sumOfRuntime >= QUANTA_LIMIT){
+    			break;
+    		}
+    		sumOfRuntime += Math.ceil(p.getExpRunTime());
+    		validProcesses.add(p);
+    	}
+		return validProcesses;
+    }
+    
+    //Helper function to approximate number of processes for 100 quanta based on estimate of expected run time
+    private static ArrayList<Process> getBatchProcessesList(ArrayList<Process> processes){
+    	ArrayList<Process> validProcesses = new ArrayList<Process>();
+    	int sumOfRuntime = 0;
+    	
+    	for(Process p : processes){
+    		if(sumOfRuntime >= QUANTA_LIMIT){
+    			break;
+    		}
+    		sumOfRuntime += Math.ceil(p.getExpRunTime());
+    		validProcesses.add(p);
+    	}
+		return validProcesses;
     }
     
     //Convert Queue to Deque (double ended queue)
     private static Deque<Process> convertToDeque(Queue<Process> processes){
-        Deque<Process> queue = new LinkedList<Process>();
-        for(Process p : processes){
-            queue.add(p);
-        }
-        return queue;
+    	Deque<Process> queue = new LinkedList<Process>();
+    	for(Process p : processes){
+    		queue.add(p);
+    	}
+		return queue;
     }
     
     /* RETURN SIMULATION RESULTS */
