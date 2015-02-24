@@ -10,7 +10,7 @@
 typedef enum {GS, RS, EE} Status;
 
 //CS 149 section: 1, 2 or 3
-typedef enum {SECTION_1 = 1, SECTION_2 = 2, SECTION_3 = 3} Section;
+typedef enum {ANY = 0, SECTION_1 = 1, SECTION_2 = 2, SECTION_3 = 3} Section;
 
 //Student struct
 typedef struct
@@ -37,7 +37,7 @@ void generateStudents()
         Student student;
         student.studentID = i;//incremental student id
         student.arrivalTime = rand() % MAX_SIM_INTERVAL;//random arrival time 0 to 120 seconds
-        student.sectionID = 1 + rand() % 3;//random section 1, 2 or 3
+        student.sectionID = rand() % 4;//random section 1, 2 or 3
         student.studentStatus = rand() % 3;//random status
         student.turnaroundTime = 0;
 
@@ -71,7 +71,7 @@ void sortByArrivalTime()
 void printRandomStudents()
 {
     /************************* DEBUGGING - REMOVE AFTER TESTING ***************************/
-    int sec1 = 0, sec2 = 0, sec3 = 0, ss1 = 0, ss2 = 0, ss3 = 0, totalArrival = 0;
+    int sec1 = 0, sec2 = 0, sec3 = 0, any = 0, ss1 = 0, ss2 = 0, ss3 = 0, totalArrival = 0;
     /*************************************************************************************/
 
     printf("Student ID  Arrival  Section  Status\t\n-----------------------------------------\n");
@@ -108,6 +108,8 @@ void printRandomStudents()
             case SECTION_3:
                 sec3++;
                 break;
+            case ANY:
+                any++;
             default:
                 break;
         }
@@ -135,7 +137,8 @@ void printRandomStudents()
     printf("# of students in Section 1: %d\n", sec1);
     printf("# of students in Section 2: %d\n", sec2);
     printf("# of students in Section 3: %d\n", sec3);
-    printf("# of students in all Sections: %d\n\n", sec1 + sec2 + sec3);
+    printf("# of students in Section Any: %d\n", any);
+    printf("# of students in all Sections: %d\n\n", sec1 + sec2 + sec3 + any);
     printf("# of GS: %d\n", ss1);
     printf("# of RS: %d\n", ss2);
     printf("# of EE: %d\n", ss3);
