@@ -128,20 +128,46 @@ int isEmpty(Queue queue) {
 // A student arrives.
 void studentArrives(Student student) {
 	// determine which queue the student belongs in
-	// for now assume we only have the EE queue
-	//TODO:
+	switch (student.studentStatus) {
+	case EE:
+		// Acquire the mutex lock to protect the EE queue.
+		pthread_mutex_lock(&eeMutex);
 
-	// Acquire the mutex lock to protect the EE queue.
-	pthread_mutex_lock(&eeMutex);
+		// Add a student into the EE queue.
+		offer(&eeQueue, student);
 
-	// Add a student into the EE queue.
-	offer(&eeQueue, student);
+		// Release the mutex lock.
+		pthread_mutex_unlock(&eeMutex);
 
-	// Release the mutex lock.
-	pthread_mutex_unlock(&eeMutex);
+		// Signal the EE queue semaphore.
+		sem_post(&eeSemaphore);  // signal
+		break;
+	case RS:
+		// Acquire the mutex lock to protect the RS queue.
+		pthread_mutex_lock(&rsMutex);
 
-	// Signal the EE queue semaphore.
-	sem_post(&eeSemaphore);  // signal
+		// Add a student into the RS queue.
+		offer(&rsQueue, student);
+
+		// Release the mutex lock.
+		pthread_mutex_unlock(&rsMutex);
+
+		// Signal the RS queue semaphore.
+		sem_post(&rsSemaphore);  // signal
+		break;
+	case GS:
+		// Acquire the mutex lock to protect the GS queue.
+		pthread_mutex_lock(&gsMutex);
+
+		// Add a student into the GS queue.
+		offer(&gsQueue, student);
+
+		// Release the mutex lock.
+		pthread_mutex_unlock(&gsMutex);
+
+		// Signal the GS queue semaphore.
+		sem_post(&gsSemaphore);  // signal
+	}
 
 	// print event
 	//TODO:
@@ -153,9 +179,9 @@ void *student_t(void *param) {
 	Student student;
 	student.studentID = *((int *) param);
 	student.arrivalTime = rand()%SIMULATION_DURATION;
-	//student.studentStatus = rand()%3;
+	student.studentStatus = rand()%3;
 	student.sectionID = rand()%4;
-	student.studentStatus = GS;
+	//student.studentStatus = GS;
 	//student.sectionID = ANY;
 
 	// Students will arrive at random times during simulation.
