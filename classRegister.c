@@ -11,13 +11,13 @@
 #define STUDENT_COUNT 75
 
 #define MAX_SEATS 20
-#define SIMULATION_DURATION 120
+#define SIMULATION_DURATION 12
 
 //Student status: graduating senior, regular senior, everyone else
 typedef enum {GS = 0, RS = 1, EE= 2} Status;
 
 //CS 149 section: 1, 2 or 3
-typedef enum {ANY = 0, SECTION_1 = 1, SECTION_2 = 2, SECTION_3 = 3} Section;
+typedef enum {SECTION_1 = 0, SECTION_2 = 1, SECTION_3 = 2, ANY = 3} Section;
 
 //Student struct
 typedef struct
@@ -29,16 +29,101 @@ typedef struct
     Section sectionID;
 } Student;
 
-pthread_mutex_t EEMutex;  // mutex protects EE queue
-pthread_mutex_t RSMutex;  // mutex protects RS queue
-pthread_mutex_t GSMutex;  // mutex protects GS queue
+typedef struct node {
+	Student data;
+	struct node *next;
+	struct node *prev;
+} Node;
+
+typedef struct {
+	Node *first;
+	Node *last;
+	int size;
+} Queue;
+
+Queue eeQueue;
+Queue rsQueue;
+Queue gsQueue;
+
+pthread_mutex_t sec1_mutex;  // mutex protects section1 array
+pthread_mutex_t sec2_mutex;  // mutex protects section2 array
+pthread_mutex_t sec3_mutex;  // mutex protects section3 array
+pthread_mutex_t dropped_mutex;  // mutex protects dropped student array
+pthread_mutex_t eeMutex;  // mutex protects EE queue
+pthread_mutex_t rsMutex;  // mutex protects RS queue
+pthread_mutex_t gsMutex;  // mutex protects GS queue
+sem_t eeSemaphore;        // everybodyElse_t waits on this semaphore
+sem_t rsSemaphore;        // regularSenior_t waits on this semaphore
+sem_t gsSemaphore;        // graduatingSenior_t waits on this semaphore
 
 Student section1[MAX_SEATS];
 Student section2[MAX_SEATS];
 Student section3[MAX_SEATS];
+Student dropped[STUDENT_COUNT];
 
-int studentsLeft = STUDENT_COUNT;
+int studentsLeft = 1;//STUDENT_COUNT;
 int emptySlots = 3 * MAX_SEATS;
+int sec1_index = 0, sec2_index = 0, sec3_index = 0, dropped_index = 0;
+float eeTurnAvg, rsTurnAvg, gsTurnAvg;
+
+void create(Queue *queue) {
+	queue->first = queue->last = NULL;
+	queue->size = 0;
+}
+
+Student peek(Queue queue) {
+	return queue.first->data;
+}
+
+Student poll(Queue *queue) {
+	Node *temp = queue->first;
+
+	if (temp == NULL) {
+		printf("\n Error: empty queue.\n");
+	}
+
+	Student data = temp->data;
+
+	if (temp->next != NULL)
+	{
+		queue->first = temp->next;
+		queue->first->prev = NULL;
+		free(temp);
+	}
+	else
+	{
+		queue->first = NULL;
+		queue->last = NULL;
+		free(temp);
+	}
+	queue->size--;
+	return data;
+}
+
+void offer(Queue *queue, Student data) {
+	if (queue->last == NULL)
+	{
+		queue->last = (Node *)malloc(1 * sizeof(Node));
+		queue->last->next = NULL;
+		queue->last->prev = NULL;
+		queue->last->data = data;
+		queue->first = queue->last;
+	}
+	else
+	{
+		Node *temp = (Node *)malloc(1 * sizeof(Node));
+		queue->last->next = temp;
+		temp->data = data;
+		temp->next = NULL;
+		temp->prev = queue->last;
+		queue->last = temp;
+	}
+	queue->size++;
+}
+
+int isEmpty(Queue queue) {
+	return queue.size == 0;
+}
 
 // A student arrives.
 void studentArrives(Student student) {
@@ -47,19 +132,21 @@ void studentArrives(Student student) {
 	//TODO:
 
 	// Acquire the mutex lock to protect the EE queue.
-	pthread_mutex_lock(&EEMutex);
+	pthread_mutex_lock(&eeMutex);
 
 	// Add a student into the EE queue.
-	//TODO:
+	offer(&eeQueue, student);
+	studentsLeft--;
 
 	// Release the mutex lock.
-	pthread_mutex_unlock(&EEMutex);
+	pthread_mutex_unlock(&eeMutex);
 
 	// Signal the EE queue semaphore.
-	//sem_post(&filledChairs);  // signal  <-- indicates that the queue size has increased
+	sem_post(&eeSemaphore);  // signal
 
 	// print event
 	//TODO:
+	printf("Student %d arrives\n", student.studentID);
 }
 
 // the student thread
@@ -72,64 +159,151 @@ void *student_t(void *param) {
 	student.studentStatus = GS;
 	student.sectionID = ANY;
 
-	// Students will arrive at random times during the office hour.
+	// Students will arrive at random times during simulation.
 	sleep(student.arrivalTime);
 	studentArrives(student);
 
 	return NULL;
 }
 
+int addToSection1(Student student) {
+	int enrolled;
+
+	pthread_mutex_lock(&sec1_mutex);
+
+	// check to see if the section is full
+	if (sec1_index < MAX_SEATS) {
+		// enroll the student in the class
+		section1[sec1_index++] = student;
+		emptySlots--;
+		enrolled = 1;
+	}
+	else enrolled = 0;
+
+	pthread_mutex_unlock(&sec1_mutex);
+
+	return enrolled;
+}
+
+int addToSection2(Student student) {
+	int enrolled;
+
+	pthread_mutex_lock(&sec2_mutex);
+
+	// check to see if the section is full
+	if (sec2_index < MAX_SEATS) {
+		// enroll the student in the class
+		section2[sec2_index++] = student;
+		emptySlots--;
+		enrolled = 1;
+	}
+	else enrolled = 0;
+
+	pthread_mutex_unlock(&sec2_mutex);
+
+	return enrolled;
+}
+
+int addToSection3(Student student) {
+	int enrolled;
+
+	pthread_mutex_lock(&sec3_mutex);
+
+	// check to see if the section is full
+	if (sec3_index < MAX_SEATS) {
+		// enroll the student in the class
+		section3[sec3_index++] = student;
+		emptySlots--;
+		enrolled = 1;
+	}
+	else enrolled = 0;
+
+	pthread_mutex_unlock(&sec3_mutex);
+
+	return enrolled;
+}
+
 int processStudent(Student student) {
 	// print event
 	//TODO:
+	printf("Begin processing %d\n", student.studentID);
 
 	int enrolled;
 
 	// determine what section the student belongs in
-	switch (student.sectionID) {
-	case SECTION_1:
-		enrolled = addToSection1(student);// returns 0 if section is already full
-		break;
-	case SECTION_2:
-		enrolled = addToSection2(student);// returns 0 if section is already full
-		break;
-	case SECTION_3:
-		enrolled = addToSection3(student);// returns 0 if section is already full
-		break;
-	case ANY:
-		// Add to the section with the most empty slots? Or randomly among the available sections?
-		//TODO:
+	Section section = student.sectionID;
+	int any = 0;
+	if (section == ANY) {
+		// choose a random section
+		section = rand()%3;
+		any = 3;
 	}
 
+	do {
+		switch (section) {
+		case SECTION_1:
+			enrolled = addToSection1(student);// returns 0 if section is already full
+			break;
+		case SECTION_2:
+			enrolled = addToSection2(student);// returns 0 if section is already full
+			break;
+		case SECTION_3:
+			enrolled = addToSection3(student);// returns 0 if section is already full
+		}
+
+		// if a student failed to enroll and can be enrolled in any section try another section
+		if (!enrolled && any) {
+			any--;
+			section = (section + 1) % 3;
+		}
+	} while (!enrolled && any);
+
+	// calculate turnaround time
+	int turnaround = 0;//<-----------TODO:
+	student.turnaroundTime = turnaround;
+
 	// if student was dropped add to list of dropped (making sure to lock and unlock)
-	//TODO:
+	if (!enrolled) {
+		pthread_mutex_lock(&dropped_mutex);
+		dropped[dropped_index++] = student;
+		pthread_mutex_unlock(&dropped_mutex);
+
+		printf("Student %d dropped\n", student.studentID);
+	}
+	else {
+		printf("Student %d enrolled\n", student.studentID);
+	}
 
 	// calculate turnaround time and return it
-	//TODO:
+	return turnaround;
 }
 
 void *everybodyElse_t(void *param) {
+	int studentCount = 0;
+	int totalTurnaround = 0;
 	do {
 		// Wait on the EE queue semaphore.
-		//sem_wait(&filledChairs);
+		sem_wait(&eeSemaphore);
 
 		// wait for a little while before processing
 		sleep(rand()%4 + 3); // 3, 4, 5 or 6 seconds
 
 		// Acquire the mutex lock to protect the chairs and the wait count.
-		pthread_mutex_lock(&EEMutex);
+		pthread_mutex_lock(&eeMutex);
 
 		// Critical region: Remove a student from EE queue and process them.
-		//Student student = poll(EEQueue);
+		Student student = poll(&eeQueue);
 
 		// Release the mutex lock.
-		pthread_mutex_unlock(&EEMutex);
+		pthread_mutex_unlock(&eeMutex);
 
-		//int turnaroundTime = processStudent(student);
+		int turnaroundTime = processStudent(student);
+		studentCount++;
+		totalTurnaround += turnaroundTime;
 	} while(studentsLeft && emptySlots);
 
 	// calculate average turnaround time for this queue
-	//TODO:
+	eeTurnAvg = (float) totalTurnaround / studentCount;
 
 	return NULL;
 }
@@ -138,11 +312,30 @@ void *everybodyElse_t(void *param) {
 int main(int argc, char *argv[])
 {
 	int studentIds[STUDENT_COUNT];
+	int eeQueueId = 0;
+	int rsQueueId = 1;
+	int gsQueueId = 2;
+	create(&eeQueue);
+	create(&rsQueue);
+	create(&gsQueue);
 
 	// Initialize the mutexes and the semaphores.
-	//TODO:
+	pthread_mutex_init(&sec1_mutex, NULL);
+	pthread_mutex_init(&sec2_mutex, NULL);
+	pthread_mutex_init(&sec3_mutex, NULL);
+	pthread_mutex_init(&dropped_mutex, NULL);
+	pthread_mutex_init(&eeMutex, NULL);
+	pthread_mutex_init(&rsMutex, NULL);
+	pthread_mutex_init(&gsMutex, NULL);
+	sem_init(&eeSemaphore, 0, 0);
+	sem_init(&rsSemaphore, 0, 0);
+	sem_init(&gsSemaphore, 0, 0);
 
 	// Create the queue threads.
+	pthread_t eeQueueThreadId;
+	pthread_attr_t eeQueueAttr;
+	pthread_attr_init(&eeQueueAttr);
+	pthread_create(&eeQueueThreadId, &eeQueueAttr, everybodyElse_t, &eeQueueId);
 	//TODO:
 
 	// Create the student threads.
@@ -161,6 +354,7 @@ int main(int argc, char *argv[])
 	}*/
 
 	// Wait for the queue threads to complete
+	pthread_join(eeQueueThreadId, NULL);
 	//TODO:
 
 	// Final statistics.
