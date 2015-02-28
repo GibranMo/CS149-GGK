@@ -1,17 +1,16 @@
+/* CS 149 Assignment 3 Multithreaded Simulation */
 #include <stdio.h>
 #include <stdlib.h>
-#include <unistd.h>
 #include <pthread.h>
 #include <semaphore.h>
 #include <signal.h>
+#include <unistd.h>
 #include <sys/time.h>
 
 #define ID_BASE 101
-
-#define STUDENT_COUNT 75
-
-#define MAX_SEATS 20
-#define SIMULATION_DURATION 120
+#define STUDENT_COUNT 75 //Max number of students
+#define SIMULATION_DURATION 120 //Max simulation interval = 2 minutes = 120 seconds
+#define MAX_SEATS 20 //max number of seats per section
 
 //Student status: graduating senior, regular senior, everyone else
 typedef enum {GS = 0, RS = 1, EE= 2} Status;
@@ -23,8 +22,8 @@ typedef enum {SECTION_1 = 0, SECTION_2 = 1, SECTION_3 = 2, ANY = 3} Section;
 typedef struct
 {
     int studentID;
-    int arrivalTime;
-    int turnaroundTime;
+    time_t arrivalTime;
+    double turnaroundTime;
     Status studentStatus;
     Section sectionID;
 } Student;
@@ -41,6 +40,11 @@ typedef struct {
 	int size;
 } Queue;
 
+struct itimerval timer;//timer to keep track of enrollmment duration
+time_t startTime;//start time is at 0
+int timesUp = 0;//flag for when enrollment duration is over
+pthread_mutex_t printMutex;  // mutex protects printing
+
 Queue eeQueue;
 Queue rsQueue;
 Queue gsQueue;
@@ -49,6 +53,7 @@ pthread_mutex_t sec1_mutex;  // mutex protects section1 array
 pthread_mutex_t sec2_mutex;  // mutex protects section2 array
 pthread_mutex_t sec3_mutex;  // mutex protects section3 array
 pthread_mutex_t dropped_mutex;  // mutex protects dropped student array
+pthread_mutex_t processedMutex; //mutex protects processed students array
 pthread_mutex_t eeMutex;  // mutex protects EE queue
 pthread_mutex_t rsMutex;  // mutex protects RS queue
 pthread_mutex_t gsMutex;  // mutex protects GS queue
@@ -60,12 +65,56 @@ Student section1[MAX_SEATS];
 Student section2[MAX_SEATS];
 Student section3[MAX_SEATS];
 Student dropped[STUDENT_COUNT];
+Student processed[STUDENT_COUNT];
 
 int studentsLeft = STUDENT_COUNT;
 int emptySlots = 3 * MAX_SEATS;
-int sec1_index = 0, sec2_index = 0, sec3_index = 0, dropped_index = 0;
+int sec1_index = 0, sec2_index = 0, sec3_index = 0, dropped_index = 0, processed_index = 0;
 float eeTurnAvg, rsTurnAvg, gsTurnAvg;
 
+//return student status as string
+const char *getStudentStatus(Status status)
+{
+    switch(status)
+    {
+        case GS:
+            return "GS";
+        case RS:
+            return "RS";
+        case EE:
+            return "EE";
+        default:
+            return "NA";
+    }
+}
+
+//print event log
+void print(char *event)
+{
+    //get current time
+    time_t now;
+    time(&now);
+    double elapsed = difftime(now, startTime);
+    int min = 0;
+    int sec = (int) elapsed;
+
+    //format time for any amount of elapsed time
+    if (sec >= 60) {
+        min = sec / 60;
+        sec -= 60 * min;
+    }
+
+    //lock print mutex
+    pthread_mutex_lock(&printMutex);
+
+    //print event
+    printf("%1d:%02d  |  %s\n", min, sec, event);
+
+    //unlock print mutex
+    pthread_mutex_unlock(&printMutex);
+}
+
+/* BEGIN Queue Implementation */
 void create(Queue *queue) {
 	queue->first = queue->last = NULL;
 	queue->size = 0;
@@ -124,6 +173,7 @@ void offer(Queue *queue, Student data) {
 int isEmpty(Queue queue) {
 	return queue.size == 0;
 }
+/* END queue implementation */
 
 // A student arrives.
 void studentArrives(Student student) {
@@ -170,25 +220,30 @@ void studentArrives(Student student) {
 	}
 
 	// print event
-	//TODO:
-	printf("Student %d arrives\n", student.studentID);
+    char event[50];
+    char status[2];
+    sprintf(status, "%s", getStudentStatus(student.studentStatus));
+    sprintf(event, "Student #%d.%s arrives and waits in QUEUE %s", student.studentID, status, status);
+    print(event);
 }
 
-// the student thread
-void *student_t(void *param) {
-	Student student;
+//student thread
+void *student_t(void *param)
+{
+    Student student;
 	student.studentID = *((int *) param);
-	student.arrivalTime = rand()%SIMULATION_DURATION;
 	student.studentStatus = rand()%3;
 	student.sectionID = rand()%4;
-	//student.studentStatus = GS;
-	//student.sectionID = ANY;
 
 	// Students will arrive at random times during simulation.
-	sleep(student.arrivalTime);
+	sleep(rand() % SIMULATION_DURATION);
+	//set arrival time
+	time_t now;
+	time(&now);
+	student.arrivalTime = now;
 	studentArrives(student);
 
-	return NULL;
+    return NULL;
 }
 
 int addToSection1(Student student) {
@@ -248,10 +303,12 @@ int addToSection3(Student student) {
 	return enrolled;
 }
 
-int processStudent(Student student) {
-	// print event
-	//TODO:
-	printf("Begin processing %d\n", student.studentID);
+double processStudent(Student student) {
+    //Used to store event message
+    char begin[75];
+    char end[75];
+    char status[2];
+    sprintf(status, "%s", getStudentStatus(student.studentStatus));
 
 	int enrolled;
 
@@ -267,12 +324,19 @@ int processStudent(Student student) {
 	do {
 		switch (section) {
 		case SECTION_1:
+            sprintf(begin, "Start processing student #%d.%s in SECTION %d", student.studentID, status, section);
+            print(begin);
 			enrolled = addToSection1(student);// returns 0 if section is already full
 			break;
 		case SECTION_2:
+
+            sprintf(begin, "Start processing student #%d.%s in SECTION %d", student.studentID, status, section);
+            print(begin);
 			enrolled = addToSection2(student);// returns 0 if section is already full
 			break;
 		case SECTION_3:
+            sprintf(begin, "Start processing student #%d.%s in SECTION %d", student.studentID, status, section);
+            print(begin);
 			enrolled = addToSection3(student);// returns 0 if section is already full
 		}
 
@@ -280,23 +344,32 @@ int processStudent(Student student) {
 		if (!enrolled && any) {
 			any--;
 			section = (section + 1) % 3;
+            sprintf(end, "End processing student #%d.%s in SECTION %d", student.studentID, status, section);
+            print(end);
 		}
 	} while (!enrolled && any);
 
 	// calculate turnaround time
-	int turnaround = 0;//<-----------TODO:
-	student.turnaroundTime = turnaround;
+	time_t now;
+    time(&now);
+    double turnaround = difftime(now, student.arrivalTime);
+    student.turnaroundTime = turnaround;
 
 	// if student was dropped add to list of dropped (making sure to lock and unlock)
 	if (!enrolled) {
 		pthread_mutex_lock(&dropped_mutex);
 		dropped[dropped_index++] = student;
 		pthread_mutex_unlock(&dropped_mutex);
-
-		printf("Student %d dropped\n", student.studentID);
+        sprintf(end, "End processing student #%d.%s in SECTION %d. (DROPPED)", student.studentID, status, section);
+        print(end);
 	}
 	else {
-		printf("Student %d enrolled\n", student.studentID);
+        student.sectionID = section;
+        pthread_mutex_lock(&processedMutex);
+		processed[processed_index++] = student;
+		pthread_mutex_unlock(&processedMutex);
+		sprintf(end, "End processing student #%d.%s in SECTION %d. (ENROLLED)", student.studentID, status, section);
+        print(end);
 	}
 	studentsLeft--;
 
@@ -323,10 +396,10 @@ void *everybodyElse_t(void *param) {
 		// Release the mutex lock.
 		pthread_mutex_unlock(&eeMutex);
 
-		int turnaroundTime = processStudent(student);
+		double turnaroundTime = processStudent(student);
 		studentCount++;
 		totalTurnaround += turnaroundTime;
-	} while(studentsLeft && emptySlots);
+	} while(studentsLeft && emptySlots && !timesUp);
 
 	// calculate average turnaround time for this queue
 	eeTurnAvg = (float) totalTurnaround / studentCount;
@@ -353,10 +426,10 @@ void *regularSenior_t(void *param) {
 		// Release the mutex lock.
 		pthread_mutex_unlock(&rsMutex);
 
-		int turnaroundTime = processStudent(student);
+		double turnaroundTime = processStudent(student);
 		studentCount++;
 		totalTurnaround += turnaroundTime;
-	} while(studentsLeft && emptySlots);
+	} while(studentsLeft && emptySlots && !timesUp);
 
 	// calculate average turnaround time for this queue
 	rsTurnAvg = (float) totalTurnaround / studentCount;
@@ -383,10 +456,10 @@ void *gradSenior_t(void *param) {
 		// Release the mutex lock.
 		pthread_mutex_unlock(&gsMutex);
 
-		int turnaroundTime = processStudent(student);
+		double turnaroundTime = processStudent(student);
 		studentCount++;
 		totalTurnaround += turnaroundTime;
-	} while(studentsLeft && emptySlots);
+	} while(studentsLeft && emptySlots && !timesUp);
 
 	// calculate average turnaround time for this queue
 	gsTurnAvg = (float) totalTurnaround / studentCount;
@@ -394,10 +467,20 @@ void *gradSenior_t(void *param) {
 	return NULL;
 }
 
-// Main.
-int main(int argc, char *argv[])
+//timer signal to end enrollment
+void timerHandler(int signal)
 {
-	int studentIds[STUDENT_COUNT];
+    timesUp = 1;
+}
+
+int main()
+{
+    printf("TIME  |  EVENT\n--------------------------------------------------------------\n");
+    srand(time(0)); //seed for randomizer
+    time(&startTime); //set timer start time at 0
+    signal(SIGALRM, timerHandler); //set timer signal
+
+    int studentIds[STUDENT_COUNT];
 	int eeQueueId = 0;
 	int rsQueueId = 1;
 	int gsQueueId = 2;
@@ -413,6 +496,8 @@ int main(int argc, char *argv[])
 	pthread_mutex_init(&eeMutex, NULL);
 	pthread_mutex_init(&rsMutex, NULL);
 	pthread_mutex_init(&gsMutex, NULL);
+	pthread_mutex_init(&printMutex, NULL);
+	pthread_mutex_init(&processedMutex, NULL);
 	sem_init(&eeSemaphore, 0, 0);
 	sem_init(&rsSemaphore, 0, 0);
 	sem_init(&gsSemaphore, 0, 0);
@@ -433,7 +518,14 @@ int main(int argc, char *argv[])
 	pthread_attr_init(&gsQueueAttr);
 	pthread_create(&gsQueueThreadId, &gsQueueAttr, gradSenior_t, &gsQueueId);
 
-	// Create the student threads.
+	//set timer for enrollment duration
+    timer.it_value.tv_sec = SIMULATION_DURATION;
+    setitimer(ITIMER_REAL, &timer, NULL);
+    char startEnrollment[25];
+    sprintf(startEnrollment, "Enrollment period begins");
+    print(startEnrollment);
+
+   // Create the student threads.
 	int i;
 	for (i = 0; i < STUDENT_COUNT; i++) {
 		studentIds[i] = ID_BASE + i;
@@ -443,13 +535,58 @@ int main(int argc, char *argv[])
 		pthread_create(&studentThreadId, &studentAttr, student_t, &studentIds[i]);
 	}
 
-	// Wait for the queue threads to complete
+    // Wait for the queue threads to complete
 	pthread_join(eeQueueThreadId, NULL);
 	pthread_join(rsQueueThreadId, NULL);
 	pthread_join(gsQueueThreadId, NULL);
 
-	// Final statistics.
-	//TODO:
+	char endEnrollment[25];
+    sprintf(endEnrollment, "Enrollment period ends");
+    print(endEnrollment);
 
-	return 0;
+    printf("\n\nSTUDENT   |  SECTION  |  ENROLLMENT STATUS  |  TURNAROUND\n");
+    printf("---------------------------------------------------------\n");
+
+    char turnaroundStr[4];
+	for(i = 0; i < processed_index; i++){
+        int min = 0;
+        int sec = (int) processed[i].turnaroundTime;
+        //format time for any amount of elapsed time
+        if (sec >= 60) {
+            min = sec / 60;
+            sec -= 60 * min;
+        }
+        //set turnaround time
+        sprintf(turnaroundStr, "%1d:%02d", min, sec);
+        printf("#%d.%s   |  %d        |  Enrolled           |  %s\n", processed[i].studentID, getStudentStatus(processed[i].studentStatus), processed[i].sectionID, turnaroundStr);
+	}
+
+	for(i = 0; i < dropped_index; i++){
+        int min = 0;
+        int sec = (int) dropped[i].turnaroundTime;
+        //format time for any amount of elapsed time
+        if (sec >= 60) {
+            min = sec / 60;
+            sec -= 60 * min;
+        }
+        sprintf(turnaroundStr, "%1d:%02d", min, sec);
+        printf("#%d.%s   |           |  Dropped            |  %s\n", dropped[i].studentID, getStudentStatus(dropped[i].studentStatus), turnaroundStr);
+	}
+
+	/* TO BE REMOVED -- testing purposes
+
+
+	for(i = 0; i < MAX_SEATS; i++){
+        if(section2[i].studentID != 0)
+            printf("%d.%s    |  2        |  Enrolled           |  %s\n", section2[i].studentID, getStudentStatus(section2[i].studentStatus), section2[i].turnaroundTime);
+	}
+
+	for(i = 0; i < MAX_SEATS; i++){
+        if(section3[i].studentID != 0)
+            printf("%d.%s    |  3        |  Enrolled           |  %s\n", section3[i].studentID, getStudentStatus(section3[i].studentStatus), section3[i].turnaroundTime);
+	}
+
+	*/
+
+    return 0;
 }
