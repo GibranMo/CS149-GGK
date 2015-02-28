@@ -11,7 +11,7 @@
 #define STUDENT_COUNT 75
 
 #define MAX_SEATS 20
-#define SIMULATION_DURATION 12
+#define SIMULATION_DURATION 120
 
 //Student status: graduating senior, regular senior, everyone else
 typedef enum {GS = 0, RS = 1, EE= 2} Status;
@@ -61,7 +61,7 @@ Student section2[MAX_SEATS];
 Student section3[MAX_SEATS];
 Student dropped[STUDENT_COUNT];
 
-int studentsLeft = 1;//STUDENT_COUNT;
+int studentsLeft = STUDENT_COUNT;
 int emptySlots = 3 * MAX_SEATS;
 int sec1_index = 0, sec2_index = 0, sec3_index = 0, dropped_index = 0;
 float eeTurnAvg, rsTurnAvg, gsTurnAvg;
@@ -136,7 +136,6 @@ void studentArrives(Student student) {
 
 	// Add a student into the EE queue.
 	offer(&eeQueue, student);
-	studentsLeft--;
 
 	// Release the mutex lock.
 	pthread_mutex_unlock(&eeMutex);
@@ -155,9 +154,9 @@ void *student_t(void *param) {
 	student.studentID = *((int *) param);
 	student.arrivalTime = rand()%SIMULATION_DURATION;
 	//student.studentStatus = rand()%3;
-	//student.sectionID = rand()%4;
+	student.sectionID = rand()%4;
 	student.studentStatus = GS;
-	student.sectionID = ANY;
+	//student.sectionID = ANY;
 
 	// Students will arrive at random times during simulation.
 	sleep(student.arrivalTime);
@@ -273,6 +272,7 @@ int processStudent(Student student) {
 	else {
 		printf("Student %d enrolled\n", student.studentID);
 	}
+	studentsLeft--;
 
 	// calculate turnaround time and return it
 	return turnaround;
@@ -308,6 +308,66 @@ void *everybodyElse_t(void *param) {
 	return NULL;
 }
 
+void *regularSenior_t(void *param) {
+	int studentCount = 0;
+	int totalTurnaround = 0;
+	do {
+		// Wait on the EE queue semaphore.
+		sem_wait(&rsSemaphore);
+
+		// wait for a little while before processing
+		sleep(rand()%3 + 2); // 2, 3 or 4 seconds
+
+		// Acquire the mutex lock to protect the chairs and the wait count.
+		pthread_mutex_lock(&rsMutex);
+
+		// Critical region: Remove a student from EE queue and process them.
+		Student student = poll(&rsQueue);
+
+		// Release the mutex lock.
+		pthread_mutex_unlock(&rsMutex);
+
+		int turnaroundTime = processStudent(student);
+		studentCount++;
+		totalTurnaround += turnaroundTime;
+	} while(studentsLeft && emptySlots);
+
+	// calculate average turnaround time for this queue
+	rsTurnAvg = (float) totalTurnaround / studentCount;
+
+	return NULL;
+}
+
+void *gradSenior_t(void *param) {
+	int studentCount = 0;
+	int totalTurnaround = 0;
+	do {
+		// Wait on the EE queue semaphore.
+		sem_wait(&gsSemaphore);
+
+		// wait for a little while before processing
+		sleep(rand()%2 + 1); // 1 or 2 seconds
+
+		// Acquire the mutex lock to protect the chairs and the wait count.
+		pthread_mutex_lock(&gsMutex);
+
+		// Critical region: Remove a student from EE queue and process them.
+		Student student = poll(&gsQueue);
+
+		// Release the mutex lock.
+		pthread_mutex_unlock(&gsMutex);
+
+		int turnaroundTime = processStudent(student);
+		studentCount++;
+		totalTurnaround += turnaroundTime;
+	} while(studentsLeft && emptySlots);
+
+	// calculate average turnaround time for this queue
+	gsTurnAvg = (float) totalTurnaround / studentCount;
+
+	return NULL;
+}
+
 // Main.
 int main(int argc, char *argv[])
 {
@@ -336,26 +396,31 @@ int main(int argc, char *argv[])
 	pthread_attr_t eeQueueAttr;
 	pthread_attr_init(&eeQueueAttr);
 	pthread_create(&eeQueueThreadId, &eeQueueAttr, everybodyElse_t, &eeQueueId);
-	//TODO:
+
+	pthread_t rsQueueThreadId;
+	pthread_attr_t rsQueueAttr;
+	pthread_attr_init(&rsQueueAttr);
+	pthread_create(&rsQueueThreadId, &rsQueueAttr, regularSenior_t, &rsQueueId);
+
+	pthread_t gsQueueThreadId;
+	pthread_attr_t gsQueueAttr;
+	pthread_attr_init(&gsQueueAttr);
+	pthread_create(&gsQueueThreadId, &gsQueueAttr, gradSenior_t, &gsQueueId);
 
 	// Create the student threads.
-	int studentId = ID_BASE;
-	pthread_t studentThreadId;
-	pthread_attr_t studentAttr;
-	pthread_attr_init(&studentAttr);
-	pthread_create(&studentThreadId, &studentAttr, student_t, &studentId);
-	/*int i;
+	int i;
 	for (i = 0; i < STUDENT_COUNT; i++) {
 		studentIds[i] = ID_BASE + i;
 		pthread_t studentThreadId;
 		pthread_attr_t studentAttr;
 		pthread_attr_init(&studentAttr);
 		pthread_create(&studentThreadId, &studentAttr, student_t, &studentIds[i]);
-	}*/
+	}
 
 	// Wait for the queue threads to complete
 	pthread_join(eeQueueThreadId, NULL);
-	//TODO:
+	pthread_join(rsQueueThreadId, NULL);
+	pthread_join(gsQueueThreadId, NULL);
 
 	// Final statistics.
 	//TODO:
