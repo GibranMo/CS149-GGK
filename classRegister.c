@@ -84,7 +84,7 @@ const char *getStudentStatus(Status status)
         case EE:
             return "EE";
         default:
-            return "NA";
+            return " ";
     }
 }
 
@@ -217,6 +217,10 @@ void studentArrives(Student student) {
 
 		// Signal the GS queue semaphore.
 		sem_post(&gsSemaphore);  // signal
+		break;
+    default:
+        //do nothing
+        break;
 	}
 
 	// print event
@@ -338,6 +342,13 @@ double processStudent(Student student) {
             sprintf(begin, "Start processing student #%d.%s in SECTION %d", student.studentID, status, section);
             print(begin);
 			enrolled = addToSection3(student);// returns 0 if section is already full
+			break;
+        case ANY:
+            //do nothing - fixes compiler warning
+            break;
+        default:
+            //do nothing
+            break;
 		}
 
 		// if a student failed to enroll and can be enrolled in any section try another section
@@ -587,6 +598,7 @@ int main()
 	}
 
 	*/
+
 
     return 0;
 }
