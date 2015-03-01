@@ -8,8 +8,8 @@
 #include <sys/time.h>
 
 #define ID_BASE 101
-#define STUDENT_COUNT 75 //Max number of students
-#define SIMULATION_DURATION 120 //Max simulation interval = 2 minutes = 120 seconds
+#define STUDENT_COUNT 40 //Max number of students
+#define SIMULATION_DURATION 60 //Max simulation interval = 2 minutes = 120 seconds
 #define MAX_SEATS 20 //max number of seats per section
 
 //Student status: graduating senior, regular senior, everyone else
@@ -108,6 +108,7 @@ void print(char *event)
 
     //print event
     printf("%1d:%02d  |  %s\n", min, sec, event);
+    //printf("LEFT %d : EMPTY %d\n", studentsLeft, emptySlots);
 
     //unlock print mutex
     pthread_mutex_unlock(&printMutex);
@@ -224,8 +225,7 @@ void studentArrives(Student student) {
 
 	// print event
     char event[50];
-    char status[2];
-    sprintf(status, "%s", getStudentStatus(student.studentStatus));
+    const char *status = getStudentStatus(student.studentStatus);
     sprintf(event, "Student #%d.%s arrives and waits in QUEUE %s", student.studentID, status, status);
     print(event);
 }
@@ -310,8 +310,7 @@ double processStudent(Student student) {
     //Used to store event message
     char begin[75];
     char end[75];
-    char status[2];
-    sprintf(status, "%s", getStudentStatus(student.studentStatus));
+    const char *status = getStudentStatus(student.studentStatus);
 
 	int enrolled;
 
@@ -369,6 +368,7 @@ double processStudent(Student student) {
 	if (!enrolled) {
 		pthread_mutex_lock(&dropped_mutex);
 		dropped[dropped_index++] = student;
+		studentsLeft--;
 		pthread_mutex_unlock(&dropped_mutex);
         sprintf(end, "End processing student #%d.%s in SECTION %d. (DROPPED)", student.studentID, status, section);
         print(end);
@@ -377,11 +377,11 @@ double processStudent(Student student) {
         student.sectionID = section;
         pthread_mutex_lock(&processedMutex);
 		processed[processed_index++] = student;
+		studentsLeft--;
 		pthread_mutex_unlock(&processedMutex);
 		sprintf(end, "End processing student #%d.%s in SECTION %d. (ENROLLED)", student.studentID, status, section);
         print(end);
 	}
-	studentsLeft--;
 
 	// calculate turnaround time and return it
 	return turnaround;
@@ -393,6 +393,8 @@ void *everybodyElse_t(void *param) {
 	do {
 		// Wait on the EE queue semaphore.
 		sem_wait(&eeSemaphore);
+
+		if (!studentsLeft || !emptySlots) break;
 
 		// wait for a little while before processing
 		sleep(rand()%4 + 3); // 3, 4, 5 or 6 seconds
@@ -411,6 +413,10 @@ void *everybodyElse_t(void *param) {
 		totalTurnaround += turnaroundTime;
 	} while(studentsLeft && emptySlots);
 
+	// signal the other queue processes so that they can finish
+	sem_post(&rsSemaphore);
+	sem_post(&gsSemaphore);
+
 	// calculate average turnaround time for this queue
 	eeTurnAvg = (float) totalTurnaround / studentCount;
 
@@ -421,8 +427,10 @@ void *regularSenior_t(void *param) {
 	int studentCount = 0;
 	int totalTurnaround = 0;
 	do {
-		// Wait on the EE queue semaphore.
+		// Wait on the RS queue semaphore.
 		sem_wait(&rsSemaphore);
+
+		if (!studentsLeft || !emptySlots) break;
 
 		// wait for a little while before processing
 		sleep(rand()%3 + 2); // 2, 3 or 4 seconds
@@ -430,7 +438,7 @@ void *regularSenior_t(void *param) {
 		// Acquire the mutex lock to protect the chairs and the wait count.
 		pthread_mutex_lock(&rsMutex);
 
-		// Critical region: Remove a student from EE queue and process them.
+		// Critical region: Remove a student from RS queue and process them.
 		Student student = poll(&rsQueue);
 
 		// Release the mutex lock.
@@ -440,6 +448,10 @@ void *regularSenior_t(void *param) {
 		studentCount++;
 		totalTurnaround += turnaroundTime;
 	} while(studentsLeft && emptySlots);
+
+	// signal the other queue processes so that they can finish
+	sem_post(&eeSemaphore);
+	sem_post(&gsSemaphore);
 
 	// calculate average turnaround time for this queue
 	rsTurnAvg = (float) totalTurnaround / studentCount;
@@ -451,8 +463,10 @@ void *gradSenior_t(void *param) {
 	int studentCount = 0;
 	int totalTurnaround = 0;
 	do {
-		// Wait on the EE queue semaphore.
+		// Wait on the GS queue semaphore.
 		sem_wait(&gsSemaphore);
+
+		if (!studentsLeft || !emptySlots) break;
 
 		// wait for a little while before processing
 		sleep(rand()%2 + 1); // 1 or 2 seconds
@@ -460,7 +474,7 @@ void *gradSenior_t(void *param) {
 		// Acquire the mutex lock to protect the chairs and the wait count.
 		pthread_mutex_lock(&gsMutex);
 
-		// Critical region: Remove a student from EE queue and process them.
+		// Critical region: Remove a student from GS queue and process them.
 		Student student = poll(&gsQueue);
 
 		// Release the mutex lock.
@@ -470,6 +484,10 @@ void *gradSenior_t(void *param) {
 		studentCount++;
 		totalTurnaround += turnaroundTime;
 	} while(studentsLeft && emptySlots);
+
+	// signal the other queue processes so that they can finish
+	sem_post(&eeSemaphore);
+	sem_post(&rsSemaphore);
 
 	// calculate average turnaround time for this queue
 	gsTurnAvg = (float) totalTurnaround / studentCount;
