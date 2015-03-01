@@ -551,54 +551,74 @@ int main()
 	pthread_join(rsQueueThreadId, NULL);
 	pthread_join(gsQueueThreadId, NULL);
 
+    //enrollment ends
 	char endEnrollment[25];
     sprintf(endEnrollment, "Enrollment period ends");
     print(endEnrollment);
 
+    //print results
     printf("\n\nSTUDENT   |  SECTION  |  ENROLLMENT STATUS  |  TURNAROUND\n");
     printf("---------------------------------------------------------\n");
 
-    char turnaroundStr[4];
+    int min;
+    int sec;
 	for(i = 0; i < processed_index; i++){
-        int min = 0;
-        int sec = (int) processed[i].turnaroundTime;
+        min = 0;
+        sec = (int) processed[i].turnaroundTime;
         //format time for any amount of elapsed time
         if (sec >= 60) {
             min = sec / 60;
             sec -= 60 * min;
         }
-        //set turnaround time
-        sprintf(turnaroundStr, "%1d:%02d", min, sec);
-        printf("#%d.%s   |  %d        |  Enrolled           |  %s\n", processed[i].studentID, getStudentStatus(processed[i].studentStatus), processed[i].sectionID, turnaroundStr);
+        printf("#%d.%s   |  %d        |  Enrolled           |  %1d:%02d\n", processed[i].studentID, getStudentStatus(processed[i].studentStatus), processed[i].sectionID, min, sec);
 	}
 
 	for(i = 0; i < dropped_index; i++){
-        int min = 0;
-        int sec = (int) dropped[i].turnaroundTime;
+        min = 0;
+        sec = (int) dropped[i].turnaroundTime;
         //format time for any amount of elapsed time
         if (sec >= 60) {
             min = sec / 60;
             sec -= 60 * min;
         }
-        sprintf(turnaroundStr, "%1d:%02d", min, sec);
-        printf("#%d.%s   |           |  Dropped            |  %s\n", dropped[i].studentID, getStudentStatus(dropped[i].studentStatus), turnaroundStr);
+        printf("#%d.%s   |           |  Dropped            |  %1d:%02d\n", dropped[i].studentID, getStudentStatus(dropped[i].studentStatus), min, sec);
 	}
 
-	/* TO BE REMOVED -- testing purposes
+	//print total number of students per section
+	printf("\nTotal # of students in Section 0: %d\n", sec1_index);
+	printf("Total # of students in Section 1: %d\n", sec2_index);
+	printf("Total # of students in Section 2: %d\n", sec3_index);
 
+	printf("\nTotal # of students enrolled: %d\n", processed_index);
+	printf("Total # of students dropped: %d\n", dropped_index);
 
-	for(i = 0; i < MAX_SEATS; i++){
-        if(section2[i].studentID != 0)
-            printf("%d.%s    |  2        |  Enrolled           |  %s\n", section2[i].studentID, getStudentStatus(section2[i].studentStatus), section2[i].turnaroundTime);
-	}
+    //print average turnaround times per queue
+    min = 0;
+    sec = (int) gsTurnAvg;
+    //format time for any amount of elapsed time
+    if (sec >= 60) {
+        min = sec / 60;
+        sec -= 60 * min;
+    }
+	printf("\nGS average turnaround time: %1d:%02d\n", min, sec);
 
-	for(i = 0; i < MAX_SEATS; i++){
-        if(section3[i].studentID != 0)
-            printf("%d.%s    |  3        |  Enrolled           |  %s\n", section3[i].studentID, getStudentStatus(section3[i].studentStatus), section3[i].turnaroundTime);
-	}
+	min = 0;
+    sec = (int) rsTurnAvg;
+    //format time for any amount of elapsed time
+    if (sec >= 60) {
+        min = sec / 60;
+        sec -= 60 * min;
+    }
+	printf("RS average turnaround time: %1d:%02d\n", min, sec);
 
-	*/
-
+	min = 0;
+    sec = (int) eeTurnAvg;
+    //format time for any amount of elapsed time
+    if (sec >= 60) {
+        min = sec / 60;
+        sec -= 60 * min;
+    }
+	printf("EE average turnaround time: %1d:%02d\n", min, sec);
 
     return 0;
 }
