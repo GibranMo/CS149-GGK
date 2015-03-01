@@ -42,7 +42,6 @@ typedef struct {
 
 struct itimerval timer;//timer to keep track of enrollmment duration
 time_t startTime;//start time is at 0
-int timesUp = 0;//flag for when enrollment duration is over
 pthread_mutex_t printMutex;  // mutex protects printing
 
 Queue eeQueue;
@@ -410,7 +409,7 @@ void *everybodyElse_t(void *param) {
 		double turnaroundTime = processStudent(student);
 		studentCount++;
 		totalTurnaround += turnaroundTime;
-	} while(studentsLeft && emptySlots && !timesUp);
+	} while(studentsLeft && emptySlots);
 
 	// calculate average turnaround time for this queue
 	eeTurnAvg = (float) totalTurnaround / studentCount;
@@ -440,7 +439,7 @@ void *regularSenior_t(void *param) {
 		double turnaroundTime = processStudent(student);
 		studentCount++;
 		totalTurnaround += turnaroundTime;
-	} while(studentsLeft && emptySlots && !timesUp);
+	} while(studentsLeft && emptySlots);
 
 	// calculate average turnaround time for this queue
 	rsTurnAvg = (float) totalTurnaround / studentCount;
@@ -470,7 +469,7 @@ void *gradSenior_t(void *param) {
 		double turnaroundTime = processStudent(student);
 		studentCount++;
 		totalTurnaround += turnaroundTime;
-	} while(studentsLeft && emptySlots && !timesUp);
+	} while(studentsLeft && emptySlots);
 
 	// calculate average turnaround time for this queue
 	gsTurnAvg = (float) totalTurnaround / studentCount;
@@ -478,18 +477,11 @@ void *gradSenior_t(void *param) {
 	return NULL;
 }
 
-//timer signal to end enrollment
-void timerHandler(int signal)
-{
-    timesUp = 1;
-}
-
 int main()
 {
     printf("TIME  |  EVENT\n--------------------------------------------------------------\n");
     srand(time(0)); //seed for randomizer
     time(&startTime); //set timer start time at 0
-    signal(SIGALRM, timerHandler); //set timer signal
 
     int studentIds[STUDENT_COUNT];
 	int eeQueueId = 0;
@@ -530,7 +522,7 @@ int main()
 	pthread_create(&gsQueueThreadId, &gsQueueAttr, gradSenior_t, &gsQueueId);
 
 	//set timer for enrollment duration
-    timer.it_value.tv_sec = SIMULATION_DURATION;
+    timer.it_value.tv_sec = 0; // no alarm
     setitimer(ITIMER_REAL, &timer, NULL);
     char startEnrollment[25];
     sprintf(startEnrollment, "Enrollment period begins");
