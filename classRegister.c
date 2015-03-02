@@ -8,8 +8,8 @@
 #include <sys/time.h>
 
 #define ID_BASE 101
-#define STUDENT_COUNT 40 //Max number of students
-#define SIMULATION_DURATION 60 //Max simulation interval = 2 minutes = 120 seconds
+#define STUDENT_COUNT 75 //Max number of students
+#define SIMULATION_DURATION 120 //Max simulation interval = 2 minutes = 120 seconds
 #define MAX_SEATS 20 //max number of seats per section
 
 //Student status: graduating senior, regular senior, everyone else
@@ -28,12 +28,14 @@ typedef struct
     Section sectionID;
 } Student;
 
+//Node struct
 typedef struct node {
 	Student data;
 	struct node *next;
 	struct node *prev;
 } Node;
 
+//Queue struct
 typedef struct {
 	Node *first;
 	Node *last;
@@ -44,6 +46,7 @@ struct itimerval timer;//timer to keep track of enrollmment duration
 time_t startTime;//start time is at 0
 pthread_mutex_t printMutex;  // mutex protects printing
 
+//Queue of students
 Queue eeQueue;
 Queue rsQueue;
 Queue gsQueue;
@@ -60,6 +63,7 @@ sem_t eeSemaphore;        // everybodyElse_t waits on this semaphore
 sem_t rsSemaphore;        // regularSenior_t waits on this semaphore
 sem_t gsSemaphore;        // graduatingSenior_t waits on this semaphore
 
+//student arrays
 Student section1[MAX_SEATS];
 Student section2[MAX_SEATS];
 Student section3[MAX_SEATS];
@@ -542,9 +546,7 @@ int main()
 	//set timer for enrollment duration
     timer.it_value.tv_sec = 0; // no alarm
     setitimer(ITIMER_REAL, &timer, NULL);
-    char startEnrollment[25];
-    sprintf(startEnrollment, "Enrollment period begins");
-    print(startEnrollment);
+    print("Enrollment period begins");
 
    // Create the student threads.
 	int i;
@@ -562,9 +564,7 @@ int main()
 	pthread_join(gsQueueThreadId, NULL);
 
     //enrollment ends
-	char endEnrollment[25];
-    sprintf(endEnrollment, "Enrollment period ends");
-    print(endEnrollment);
+    print("Enrollment period ends");
 
     //print results
     printf("\n\nSTUDENT   |  SECTION  |  ENROLLMENT STATUS  |  TURNAROUND\n");
@@ -572,10 +572,11 @@ int main()
 
     int min;
     int sec;
+
+    //print list of enrolled students
 	for(i = 0; i < processed_index; i++){
         min = 0;
         sec = (int) processed[i].turnaroundTime;
-        //format time for any amount of elapsed time
         if (sec >= 60) {
             min = sec / 60;
             sec -= 60 * min;
@@ -583,6 +584,7 @@ int main()
         printf("#%d.%s   |  %d        |  Enrolled           |  %1d:%02d\n", processed[i].studentID, getStudentStatus(processed[i].studentStatus), processed[i].sectionID, min, sec);
 	}
 
+    //print list of dropped students
 	for(i = 0; i < dropped_index; i++){
         min = 0;
         sec = (int) dropped[i].turnaroundTime;
@@ -599,13 +601,14 @@ int main()
 	printf("Total # of students in Section 1: %d\n", sec2_index);
 	printf("Total # of students in Section 2: %d\n", sec3_index);
 
+    //print total number of enrolled and dropped students
 	printf("\nTotal # of students enrolled: %d\n", processed_index);
 	printf("Total # of students dropped: %d\n", dropped_index);
+	printf("Total # of students remaining: %d\n", studentsLeft);
 
     //print average turnaround times per queue
     min = 0;
     sec = (int) gsTurnAvg;
-    //format time for any amount of elapsed time
     if (sec >= 60) {
         min = sec / 60;
         sec -= 60 * min;
@@ -614,7 +617,6 @@ int main()
 
 	min = 0;
     sec = (int) rsTurnAvg;
-    //format time for any amount of elapsed time
     if (sec >= 60) {
         min = sec / 60;
         sec -= 60 * min;
@@ -623,7 +625,6 @@ int main()
 
 	min = 0;
     sec = (int) eeTurnAvg;
-    //format time for any amount of elapsed time
     if (sec >= 60) {
         min = sec / 60;
         sec -= 60 * min;
