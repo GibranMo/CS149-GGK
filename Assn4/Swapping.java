@@ -8,6 +8,9 @@ public class Swapping {
 	private int memSize; //main memory size
 	private int runtime; //simulation run time
 	private Queue<Process> readyQueue; //ready queue of processes
+	
+	LinkedList<Partition> mainMem; //main memory
+	Map<String, Process> inMem; //memory tracker used to keep track of process running time
 
 	public Swapping(Queue<Process> readyQueue, int memSize, int runtime){
 		this.readyQueue = readyQueue;
@@ -17,90 +20,81 @@ public class Swapping {
 	
 	//TODO: Keith
 	//Finds the first hole big enough
-	public void firstFit(){
-		Queue<Process> tempReadyQueue = readyQueue;
-		LinkedList<Partition> mainMem = createMemManager();
-		Map<String, Process> inMem = new HashMap<String, Process>(); //memory tracker
-		System.out.println("Time | Swap | PID | Size | Duration | Memory Map\n-------------------------------------------------");
+	public int firstFit(){
 		
+		System.out.println("Time | Swap | PID | Size | Dur. | Memory Map\n-------------------------------------------------");
+		Queue<Process> tempReadyQueue = readyQueue; //Ready queue
+		
+		//Re-initialize main memory and memory tracker
+		mainMem = createMemManager(); //main memory
+		inMem = new HashMap<String, Process>(); //memory tracker
+		
+		int swapCount = 0; //count number of processes swapped in
+		
+		//print free memory map
 		int currTime = 0;
+		print("", currTime, null);
+		
+		currTime++;
 		while(currTime < runtime && tempReadyQueue.size() > 0){
 			
-			//Decrease process running time and swap out any finished process
-			for(int i = 0; i < mainMem.size(); i++){
-				Partition partition = mainMem.get(i);
-				if(!partition.isEmpty){
-					Process p = inMem.get(partition.pid);
-					if(p.getDuration() > 0){
-						p.decrementDuration();
-						if(p.getDuration() == 0){
-							do{
-								if(mainMem.get(i).pid.equals(p.getPID())){
-									mainMem.get(i).clear();
-								}else{
-									break;
-								}
-								i++;
-							}while(i < mainMem.size());
-							print("out", currTime, p, mainMem);
-							inMem.remove(p); //remove from memory tracker
-							i--;
-						}
-					}
-				}
-				//System.out.println("count: " + i);
-			}
+			//Perform swap out if process is finish in main memory
+			swapOut(currTime);
 			
-			//Check for available partition hole
-			int availableSize = 0;
-			int pSize = tempReadyQueue.peek().getSize();
-			boolean found = false;
-			for(int i = 0; i < mainMem.size(); i++){
+			//Check for free partition hole
+			int requiredSize = tempReadyQueue.peek().getSize(); //process size
+			for(int pIndex = 0; pIndex < mainMem.size(); pIndex++){
 				
-				int j = i;
-				//If partition is empty
-				if(mainMem.get(i).isEmpty){
-					
-					//Check consecutive partitions for a large enough hole
-					for(j = i; j < mainMem.size(); j++){
-						//Check if consecutive partitions are empty
-						if(mainMem.get(j).isEmpty){
-							availableSize++;
-							//Set found to true if available size is found
-							if(availableSize == pSize){
+				int freeSize = 0; //counter to keep track of consecutive free partitions
+				boolean found = false; //flag if free partition hole was found
+				
+				//If partition is free, check if consecutive partitions are free
+				if(mainMem.get(pIndex).isFree()){
+					do{
+						if(mainMem.get(pIndex).isFree()){
+							freeSize++; //counting consecutive free partition
+							
+							//Set found to true if process fits in the free partition(s)
+							if(freeSize == requiredSize){
 								found = true;
 								break;
 							}
-						}
-						else{
-							//break since the hole is not big enough
+						}else{
+							//break if not enough consecutive partitions are free
 							break;
 						}
+						pIndex++;
+					}while(pIndex < mainMem.size());
+					
+					//If hole is found, swap in
+					if(found){
+						Process p = tempReadyQueue.poll(); //Remove process from queue for swapping
+						
+						//Calculate starting and ending partition
+						int startIndex = (pIndex + 1) - requiredSize ;
+						p.setFirstPartition(startIndex);
+						p.setLastPartition(pIndex);
+						
+						//add process to memory tracker
+						inMem.put(p.getPID(), p); 
+						
+						//Swapping in process
+						while(startIndex <= pIndex){
+							mainMem.get(startIndex).setPID(p.getPID());
+							mainMem.get(startIndex).isFree(false);
+							startIndex++;
+						}
+						
+						swapCount++;
+						print("in", currTime, p);
+						break;
 					}
-				}
-				
-				//If hole is found, swap process into memory
-				if(found){
-					Process p = tempReadyQueue.poll();
-					while(i <= j){
-						mainMem.get(i).pid = p.getPID();
-						mainMem.get(i).isEmpty = false;
-						inMem.put(p.getPID(), p); // add to in memory tracker
-						i++;
-					}
-					print("in", currTime, p, mainMem);
-					break;
-				}else{
-					//skip to next possible hole
-					i = j;
 				}
 			}
-			
 			//increment running time
-			//print("", currTime, null, mainMem);
 			currTime++;
-			
 		}
+		return swapCount;
 	}
 	
 	//TODO: Keith
@@ -120,42 +114,94 @@ public class Swapping {
 		
 	}
 	
-	public void print(String event, int time, Process p, LinkedList<Partition> mainMem){
+	//Helper method to perform checking and swap out
+	public void swapOut(int currTime){
+		//Traverse through main memory to check for processes that need to be swapped out
+		for(int pIndex = 0; pIndex < mainMem.size(); pIndex++){
+			
+			//If partition is not free, it means a process is running in that partition
+			if(!mainMem.get(pIndex).isFree()){
+				
+				//Get the process from the memory tracker
+				Process p = inMem.get(mainMem.get(pIndex).getPID());
+				
+				//If the process is still running, decrement the running time
+				if(p.getDuration() > 0){
+					
+					p.decrementDuration(); //decrement running time
+					
+					//if process is finished, swap out
+					if(p.getDuration() == 0){
+						
+						//Swap out process, set partition(s) to free
+						while(pIndex <= p.getLastPartition()){
+							mainMem.get(pIndex).clear();
+							pIndex++;
+						}
+						pIndex--;//adjust current partition since we jumped forward one partition
+						print("out", currTime, p);
+						inMem.remove(p); //remove process from memory tracker
+					}else{
+						//skip to the last partition the current process is allocated
+						pIndex = p.getLastPartition();
+					}
+				}
+			}
+		}
+	}
+	
+	//Print method to print memory map on swap in and swap out
+	public void print(String event, int time, Process p){
 		//Get memory map
 		StringBuilder memMap = new StringBuilder();
 		for(Partition partition : mainMem){
-			memMap.append(partition.pid + " ");
+			memMap.append(partition.getPID() + " ");
 		}
 		
 		//Output process being swapped in or out
 		//Output current memory map
 		if(event.equals("in")){
-			System.out.printf(" %02d  | in   | %s | %02d   | %d        | %s\n", time, p.getPID(), p.getSize(), p.getDuration(), memMap.toString());
+			System.out.printf(" %02d  | in   | %s | %02d   | %d    | %s\n", time, p.getPID(), p.getSize(), p.getDuration(), memMap.toString());
 		}else if(event.equals("out")){
-			System.out.printf(" %02d  | out  | %s |      |          | %s\n", time, p.getPID(), memMap.toString());
+			System.out.printf(" %02d  | out  | %s |      |      | %s\n", time, p.getPID(), memMap.toString());
 		}else{
-			System.out.printf(" %02d  |      |     |      |          | %s\n", time, memMap.toString());
+			System.out.printf(" %02d  |      |     |      |      | %s\n", time, memMap.toString());
 		}
 	}
 	
+	//Helper method to re-initialize main memory manager
+	//Creates partition in main memory
 	public LinkedList<Partition> createMemManager(){
 		//Initialize main memory and set each unit to free
-		LinkedList<Partition>mainMem = new LinkedList<Partition>();
+		LinkedList<Partition> mainMem = new LinkedList<Partition>();
 		for(int i = 0; i < memSize; i++)
-			mainMem.add(new Partition()); //0 for free,  1 for allocated
+			mainMem.add(new Partition());
 		return mainMem;
 	}
 	
+	//Inner class to handle partition info
 	private class Partition{
-		public boolean isEmpty;
-		public String pid;
+		private boolean free;
+		private String pid;
 		public Partition(){
-			isEmpty = true;
+			free = true;
 			pid = ".";
 		}
 		public void clear(){
-			isEmpty = true;
+			free = true;
 			pid = ".";
+		}
+		public boolean isFree(){
+			return free;
+		}
+		public void isFree(boolean free){
+			this.free = free;
+		}
+		public String getPID(){
+			return pid;
+		}
+		public void setPID(String pid){
+			this.pid = pid;
 		}
 	}
 }
