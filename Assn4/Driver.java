@@ -31,9 +31,9 @@ public class Driver {
 		printProcesses(processes);
 		
 		Swapping swap = new Swapping(processes, MEM_SIZE, RUNTIME);
-		System.out.println("\n\n# of processes swapped in: " + swap.firstFit());
-		/*swap.nextFit();
-		swap.bestFit();
+		System.out.println("\n\nFirst Fit:\n# of processes swapped in: " + swap.firstFit() + "\n\n");
+		System.out.println("\n\nNext Fit:\n# of processes swapped in: " + swap.nextFit() + "\n\n");
+		/*swap.bestFit();
 		swap.worstFit();
 		
 		processes = generateProcesses();

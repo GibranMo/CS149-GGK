@@ -99,8 +99,101 @@ public class Swapping {
 	
 	//TODO: Keith
 	//Searches for the next hole, continuing from the previous search point
-	public void nextFit(){
+	public int nextFit(){
 		
+		System.out.println("Time | Swap | PID | Size | Dur. | Memory Map\n-------------------------------------------------");
+		Queue<Process> tempReadyQueue = readyQueue; //Ready queue
+		
+		//Re-initialize main memory and memory tracker
+		mainMem = createMemManager(); //main memory
+		inMem = new HashMap<String, Process>(); //memory tracker
+		
+		int swapCount = 0; //count number of processes swapped in
+		int searchIndex = 0; //keeps track of current search index
+		
+		//print free memory map
+		int currTime = 0;
+		print("", currTime, null);
+		
+		currTime++;
+		while(currTime < runtime && tempReadyQueue.size() > 0){
+			
+			//Perform swap out if process is finish in main memory
+			swapOut(currTime);
+			
+			//Check for free partition hole
+			int requiredSize = tempReadyQueue.peek().getSize(); //process size
+			int pIndex = searchIndex;
+			
+			while(pIndex < mainMem.size()){
+				
+				int freeSize = 0; //counter to keep track of consecutive free partitions
+				boolean found = false; //flag if free partition hole was found
+				
+				//If partition is free, check if consecutive partitions are free
+				if(mainMem.get(pIndex).isFree()){
+					do{
+						if(mainMem.get(pIndex).isFree()){
+							freeSize++; //counting consecutive free partition
+							
+							//Set found to true if process fits in the free partition(s)
+							if(freeSize == requiredSize){
+								found = true;
+								break;
+							}
+						}else{
+							//break if not enough consecutive partitions are free
+							break;
+						}
+						pIndex++;
+					}while(pIndex < mainMem.size());
+					
+					//If hole is found, swap in
+					if(found){
+						Process p = tempReadyQueue.poll(); //Remove process from queue for swapping
+						
+						//Calculate starting and ending partition
+						int startIndex = (pIndex + 1) - requiredSize ;
+						p.setFirstPartition(startIndex);
+						p.setLastPartition(pIndex);
+						
+						//set last search index
+						searchIndex = pIndex + 1;
+						
+						//add process to memory tracker
+						inMem.put(p.getPID(), p); 
+						
+						//Swapping in process
+						while(startIndex <= pIndex){
+							mainMem.get(startIndex).setPID(p.getPID());
+							mainMem.get(startIndex).isFree(false);
+							startIndex++;
+						}
+						
+						swapCount++;
+						print("in", currTime, p);
+						break;
+					}
+				}
+				
+				//If process has been swapped in, break out of search loop
+				if(found)
+					break;
+				
+				//If next index has wrapped around, break out of search loop
+				if((pIndex + 1) == searchIndex)
+					break;
+				
+				//if the next index has reached the end of main memory partitions, wrap around and continue search
+				if((pIndex + 1) >= mainMem.size())
+					pIndex = -1;
+				
+				pIndex++;
+			}
+			//increment running time
+			currTime++;
+		}
+		return swapCount;
 	}
 	
 	//TODO: Keith
