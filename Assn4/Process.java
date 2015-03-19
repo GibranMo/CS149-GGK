@@ -38,4 +38,9 @@ public class Process {
 	public int getDuration(){
 		return duration;
 	}
+	
+	public void decrementDuration(){
+		this.duration--;
+	}
+	
 }
