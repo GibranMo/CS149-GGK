@@ -60,4 +60,12 @@ public class Process {
 	public int getLastPartition(){
 		return lastPartition;
 	}
+	public Process getClone(){
+		Process p = new Process(this.pID);
+		p.duration = this.duration;
+		p.size = this.size;
+		p.firstPartition = this.firstPartition;
+		p.lastPartition = this.lastPartition;
+		return p;
+	}
 }

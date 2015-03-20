@@ -3,8 +3,8 @@ import java.util.Queue;
 
 public class Driver {
 	
-	private static final int MEM_SIZE = 40; //main memory size is 100 MB
-	private static final int NUM_OF_PROCESSES = 100; //arbitrary value
+	private static final int MEM_SIZE = 60; //main memory size is 100 MB
+	private static final int NUM_OF_PROCESSES = 75; //arbitrary value
 	private static final int PID_START = 10; //ID of first process
 	private static final int RUNTIME = 60; //60 seconds = 1 minute
 	
@@ -33,7 +33,9 @@ public class Driver {
 		Swapping swap = new Swapping(processes, MEM_SIZE, RUNTIME);
 		System.out.println("\n\nFirst Fit:\n# of processes swapped in: " + swap.firstFit() + "\n\n");
 		System.out.println("\n\nNext Fit:\n# of processes swapped in: " + swap.nextFit() + "\n\n");
-		/*swap.bestFit();
+		//System.out.println("\n\nNext Fit:\n# of processes swapped in: " + swap.bestFit() + "\n\n");
+		
+		/*
 		swap.worstFit();
 		
 		processes = generateProcesses();
