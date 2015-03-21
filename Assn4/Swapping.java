@@ -204,8 +204,65 @@ public class Swapping {
 	}
 	
 	//TODO: Graeme
-	public void worstFit(){
+	public int worstFit(){
+
+		Queue<Process> tempReadyQueue = clone(readyQueue); //Ready queue
+		System.out.println("Time | Swap | PID | Size | Dur. | Memory Map\n-------------------------------------------------");
 		
+		//Re-initialize main memory and memory tracker
+		mainMem = createMemManager(); //main memory
+		inMem = new HashMap<String, Process>(); //memory tracker
+		int swapCount = 0; //count number of processes swapped in
+		
+		//print free memory map
+		int currTime = 0;
+		print("", currTime, null);
+		
+		currTime++;
+		while(currTime < runtime && tempReadyQueue.size() > 0){
+
+			//Perform swap out if process is finish in main memory
+			swapOut(currTime);
+			
+			int requiredSize = tempReadyQueue.peek().getSize(); //process size
+			int freeSize = 0; //counter to keep track of consecutive free partitions
+			int pIndex = 0; //index of largest partition
+			int maxSize = 0; //size of largest partition
+			
+			// Check for largest partition hole
+			for (int index = 0; index < mainMem.size(); index++) {
+				
+				//If partition is free, check to see if consecutive partitions are also free
+				if(mainMem.get(pIndex).isFree()){
+					//counting free partitions
+					freeSize++;
+				}else{
+					//compare to previously found largest partition and reset counter
+					if (freeSize > maxSize) {
+						maxSize = freeSize;
+						pIndex = index;
+					}
+					freeSize = 0;
+				}
+			}
+			
+			//if process size fits in largest free partition, swap in
+			if(maxSize >= requiredSize){
+				
+				//Remove process from queue for swapping
+				Process p = tempReadyQueue.poll();
+				
+				//Swap in process
+				swapIn(currTime, p, pIndex);
+				
+				//increase swap count
+				swapCount++;
+			}
+			
+			//increment running time
+			currTime++;
+		}
+		return swapCount;
 	}
 	
 	//Helper method to swap in process

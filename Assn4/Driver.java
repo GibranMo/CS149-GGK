@@ -34,6 +34,7 @@ public class Driver {
 		System.out.println("\n\nFirst Fit:\n# of processes swapped in: " + swap.firstFit() + "\n\n");
 		System.out.println("\n\nNext Fit:\n# of processes swapped in: " + swap.nextFit() + "\n\n");
 		//System.out.println("\n\nNext Fit:\n# of processes swapped in: " + swap.bestFit() + "\n\n");
+		System.out.println("\n\nWorst Fit:\n# of processes swapped in: " + swap.worstFit() + "\n\n");
 		
 		/*
 		swap.worstFit();
