@@ -3,7 +3,7 @@ import java.util.Random;
 public class Process {
 	
 	//Possible sizes and durations in MB and seconds (respectively)
-	private int[] sizes = {2,3,4,5};//{5, 11, 17, 31};
+	private int[] sizes = {5, 11, 17, 31};
 	private int[] durations = {1, 2, 3, 4, 5};
 	
 	private String pID; //Process ID

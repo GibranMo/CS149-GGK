@@ -44,7 +44,9 @@ public class Swapping {
 			int freeSize = 0; //counter to keep track of consecutive free partitions
 			int pIndex = 0; //current partition index
 			
-			//Check for first free partition hole
+			//Check for free partitions
+			//loop ends when process can no longer fit in main memory and
+			//needs to wait for another process to swap out
 			while(pIndex < mainMem.size()){
 				
 				//If partition is free, check to see if consecutive partitions are also free
@@ -64,7 +66,14 @@ public class Swapping {
 						
 						//increase swap count
 						swapCount++;
-						break;
+						//break;
+						
+						//Get next process size
+						//Reset freeSize counter for next process
+						//Reset the search index to the first partition
+						requiredSize = tempReadyQueue.peek().getSize();
+						freeSize = 0;
+						pIndex = 0;
 					}
 					
 				}else{
@@ -130,7 +139,11 @@ public class Swapping {
 						
 						//increase swap count
 						swapCount++;
-						break;
+						//break;
+						
+						//Get next process size and reset the freeSize counter to 0
+						requiredSize = tempReadyQueue.peek().getSize();
+						freeSize = 0;
 					}
 				}else{
 					//reset counter since consecutive partitions are not free
@@ -170,42 +183,84 @@ public class Swapping {
 		
 		currTime++;
 		while(currTime < runtime && tempReadyQueue.size() > 0){
-			/*
+			
 			//Perform swap out if process is finish in main memory
 			swapOut(currTime);
 			
 			int requiredSize = tempReadyQueue.peek().getSize(); //process size
 			int freeSize = 0; //counter to keep track of consecutive free partitions
 			int pIndex = 0; //current partition index
-			int min
-			
-			//Check for first free partition hole
-			while(pIndex < mainMem.size()){
+			int minSizeFound = mainMem.size(); //used to keep track of minimum segment size
+			int endIndex = 0; //Used to keep track of location of the last partition to be used by the process
+			boolean found = true; //Used to flag when free segment is found
+	
+			//Continue to run until a process can no longer fit in main memory
+			while(found){
+				found = false;
 				
-				if(mainMem.get(pIndex).isFree()){					
-					freeSize++;
-				}else{
+				//Check main memory for the smallest free segment of partitions
+				while(pIndex < mainMem.size()){
 					
-					if(freeSize >= requiredSize && freeSize < min){
+					//Check for free segments and keep track of smallest segment possible
+					if(mainMem.get(pIndex).isFree()){					
+						freeSize++;
+					}else{
 						
-						
+						//Find smallest segment that will fit the process
+						if(freeSize >= requiredSize && freeSize < minSizeFound){
+							minSizeFound = freeSize;
+							endIndex = pIndex - freeSize + requiredSize - 1;
+							found = true;
+						}
+						//reset counter if consecutive partitions are not free
+						freeSize = 0;
 					}
-					
-					freeSize = 0;
+					pIndex++;
 				}
 				
-				pIndex++;
+				//if freeSize is equal to max main memory, start allocation at first partition
+				if(freeSize == mainMem.size()){
+					endIndex = requiredSize - 1;
+					found = true;
+				}
+				else if(!found && freeSize >= requiredSize){
+					//if freeSize fits process, but the found flag was skipped over, swap in process
+					endIndex = pIndex - freeSize + requiredSize - 1;
+					found = true;
+				}
+				
+				//If free segment is found, swap process into main memory
+				if(found){
+					//Remove process from queue for swapping
+					Process p = tempReadyQueue.poll();
+					
+					//Swap in process
+					swapIn(currTime, p, endIndex);
+					
+					//increase swap count
+					swapCount++;
+					
+					//Get next process size
+					//Reset freeSize counter for next process
+					//Reset the search index to the first partition
+					//set minSizeFound to max possible index
+					requiredSize = tempReadyQueue.peek().getSize();
+					freeSize = 0;
+					pIndex = 0;
+					minSizeFound = mainMem.size();
+				}
+				
 			}
 	
 			//increment running time
-			currTime++;*/
+			currTime++;
 		}
 		return swapCount;
 	}
 	
 	//TODO: Graeme
 	public int worstFit(){
-
+		
 		Queue<Process> tempReadyQueue = clone(readyQueue); //Ready queue
 		System.out.println("Time | Swap | PID | Size | Dur. | Memory Map\n-------------------------------------------------");
 		
@@ -272,7 +327,7 @@ public class Swapping {
 	public void swapIn(int currTime, Process p, int currIndex){
 		
 		//Calculate starting and ending partition
-		int startIndex = (currIndex + 1) - p.getSize() ;
+		int startIndex = (currIndex + 1) - p.getSize();
 		
 		//This is used in swapOut() to make clearing partitions easier
 		p.setFirstPartition(startIndex);
@@ -317,7 +372,7 @@ public class Swapping {
 						}
 						pIndex--;//adjust current partition since we jumped forward one partition
 						print("out", currTime, p);
-						inMem.remove(p); //remove process from memory tracker
+						inMem.remove(p.getPID()); //remove process from memory tracker
 					}else{
 						//skip to the last partition the current process is allocated
 						pIndex = p.getLastPartition();
