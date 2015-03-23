@@ -29,7 +29,7 @@ public class Paging {
         System.out.println("Running FIFO Paging Algorithm.");
         String append = "\tPAGE FAULT:  Page " + reference + " added.";
         print(new ArrayList<Integer>(workingSet), append);
-        
+        int hitCount = 0;
         for (int refCount = 1; refCount < PAGE_REF_TOTAL; refCount++) {
             reference = nextReference(reference);
             
@@ -40,9 +40,10 @@ public class Paging {
                 append = "\tPAGE FAULT:  Page " + reference + " added.";
                 print(new ArrayList<Integer>(workingSet), append);
             }
-            else if (workingSet.contains(reference)) {
+            else if (workingSet.contains(reference)) { //Gibran:  I am guessing the hit area is here
                 // print
                 print(new ArrayList<Integer>(workingSet), "");
+                hitCount++;
             }
             else {
                 // swap
@@ -55,7 +56,7 @@ public class Paging {
             }
         }
         
-        System.out.println();
+        System.out.println("\nHit Ratio: " + hitCount + " percent\n");
     }
     
     public void runLRU() {
@@ -70,7 +71,7 @@ public class Paging {
         System.out.println("Running LRU Paging Algorithm.");
         String append = "\tPAGE FAULT:  Page " + reference + " added.";
         print(new ArrayList<Integer>(workingSet.keySet()), append);
-        
+        int hitCount = 0;
         for (int refCount = 1; refCount < PAGE_REF_TOTAL; refCount++) {
             reference = nextReference(reference);
             
@@ -86,9 +87,12 @@ public class Paging {
                 append = "\tPAGE FAULT:  Page " + reference + " added.";
                 print(new ArrayList<Integer>(workingSet.keySet()), append);
             }
-            else if (workingSet.keySet().contains(reference)) {
+            else if (workingSet.keySet().contains(reference)) { //Gibran: I am guessing the hit area is here
                 // print
                 print(new ArrayList<Integer>(workingSet.keySet()), "");
+                
+                
+                hitCount++;
             }
             else {
                 // find the entry with the highest age
@@ -112,7 +116,7 @@ public class Paging {
             }
         }
         
-        System.out.println();
+        System.out.println("\nHit Ratio: " + hitCount + " percent\n");
     }
     
     private int nextReference(int current) {
