@@ -93,17 +93,22 @@ void ChildProcess(int pnum, int id, int random) {
          {
              time_t now;
              time(&now);
+             int MAX_NAME_SZ = 100;
              float elapsed = difftime(now, startTime);
              
              char keyBoardInput[100];
              char keyBoardInput2[100];
              
              printf("Enter something>");
-             scanf("%99s", keyBoardInput);
-             sprintf(keyBoardInput2, "0:%06.3lf: %s", elapsed, keyBoardInput);
-             //sprintf(keyBoardInput2, "0:%06.3lf:", elapsed);
+             
+             fgets (keyBoardInput, MAX_NAME_SZ, stdin);
+             
+             /* Remove trailing newline, if there. */
+             if ((strlen(keyBoardInput)>0) && (keyBoardInput[strlen (keyBoardInput) - 1] == '\n'))
+                 keyBoardInput[strlen (keyBoardInput) - 1] = '\0';
 
-             // Max length of 99 characters; puts a null terminated string in path, thus 99 chars + null is the max
+             sprintf(keyBoardInput2, "0:%06.3lf: %s", elapsed, keyBoardInput);
+             
              
              write(fd[pnum][WRITE_END], keyBoardInput2, strlen(keyBoardInput2)+1);
              
