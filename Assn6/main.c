@@ -6,20 +6,18 @@
 #include <signal.h>
 #include <sys/types.h>
 #include <sys/time.h>
-#include <sys/ioctl.h>
 #include <string.h>
 #include <time.h>
 
-
-#define NUM_PROC 5
-#define BUFFER_SIZE	100
-#define READ_END	0
-#define WRITE_END	1
-#define DURATION 30
+#define NUM_PROC 5      //Number of child processes
+#define BUFFER_SIZE 128  //Buffer size
+#define READ_END 0      //file descriptor read end
+#define WRITE_END 1     //File descriptor write end
+#define DURATION 30     //Duration for processes to run
 
 int fd[NUM_PROC][2];  // file descriptors for the pipe
-int timedout[NUM_PROC];
-time_t startTime;//start time is at 0
+int timedout[NUM_PROC]; //child process timeouts
+struct timeval startTime[NUM_PROC]; //child process clocks
 
 // The SIGALRM interrupt handler.
 void SIGALRM_handler1(int signo)
@@ -52,13 +50,12 @@ void SIGALRM_handler5(int signo)
     timedout[4] = 1;
 }
 
-void ChildProcess(int pnum, int id, int random) {
+void ChildProcess(int pnum, int id) {
     
     struct itimerval tval;
-    
     timerclear(& tval.it_interval);
     timerclear(& tval.it_value);
-    tval.it_value.tv_sec = DURATION;    // 10 second timeout
+    tval.it_value.tv_sec = DURATION;    //set timeout
     
     switch (pnum) {
         case 0:
@@ -78,84 +75,66 @@ void ChildProcess(int pnum, int id, int random) {
             break;
     }
     
-    timedout[pnum] = 0;
+    timedout[pnum] = 0; //initialize timeout flag to 0
     
     // Close the unused READ end of the pipe.
     //close(fd[pnum][READ_END]);
     
-    setitimer(ITIMER_REAL, & tval, NULL);  // set timer
-    
+    setitimer(ITIMER_REAL, & tval, NULL);  //Set timer for process
+    gettimeofday(&startTime[pnum], NULL); //start child clock
+    struct timeval stopTime;
+    double elapsed;
+
     if(pnum == 4)
     {
-        
-        
         while (!timedout[pnum])
-         {
-             time_t now;
-             time(&now);
-             int MAX_NAME_SZ = 100;
-             float elapsed = difftime(now, startTime);
-             
-             char keyBoardInput[100];
-             char keyBoardInput2[100];
-             
-             printf("Enter something>");
-             
-             fgets (keyBoardInput, MAX_NAME_SZ, stdin);
-             
-             /* Remove trailing newline, if there. */
-             if ((strlen(keyBoardInput)>0) && (keyBoardInput[strlen (keyBoardInput) - 1] == '\n'))
-                 keyBoardInput[strlen (keyBoardInput) - 1] = '\0';
+         {   
+            char keyBoardInput[BUFFER_SIZE];
+            char keyBoardInput2[BUFFER_SIZE];
 
-             sprintf(keyBoardInput2, "0:%06.3lf: %s", elapsed, keyBoardInput);
-             
-             
-             write(fd[pnum][WRITE_END], keyBoardInput2, strlen(keyBoardInput2)+1);
-             
-         }
-        
-        printf("*end 4\n");
-        // Close the WRITE end of the pipe.
-        close(fd[pnum][WRITE_END]);
-        
-        printf("Child%d: Terminating.\n", pnum);
-        //exit(0);
+            printf("Enter something>");
+            fgets (keyBoardInput, BUFFER_SIZE, stdin);
+            /* Remove trailing newline, if there. */
+            if ((strlen(keyBoardInput)>0) && (keyBoardInput[strlen (keyBoardInput) - 1] == '\n')){
+                keyBoardInput[strlen (keyBoardInput) - 1] = '\0';
+                fflush(stdin);
+            }
 
+            gettimeofday(&stopTime, NULL);
+            elapsed = (stopTime.tv_sec - startTime[pnum].tv_sec) +
+                                ((stopTime.tv_usec - startTime[pnum].tv_usec) / 1000000.0);
+
+            sprintf(keyBoardInput2, "0:%06.3lf: %s", elapsed, keyBoardInput);
+            write(fd[pnum][WRITE_END], keyBoardInput2, strlen(keyBoardInput2)+1);
+        }
+        //printf("*end 4\n");
     }
-    
-    
-    
-    
-    int msgNum = 1;
-    while (!timedout[pnum]) {
-        char string[BUFFER_SIZE];
-        
-        // sleep for a random time of 0, 1 or 2 seconds
-        
-        int sleepTime = rand()%3;
-        //printf(">>pid: %d  sleepTime: %d ParamRandom: %d\n", pnum, sleepTime, random);
-        sleep(sleepTime);
-        
-        
-        
-        // read from a file
-        
-        // get current time
-        time_t now;
-        time(&now);
-        float elapsed = difftime(now, startTime);
-        
-        //sprintf(string, "0:%06.3lf:", elapsed);
-        sprintf(string, "0:%06.3lf: Child %d message %d", elapsed, pnum, msgNum);
-        // Write to the WRITE end of the pipe.
-        write(fd[pnum][WRITE_END], string, strlen(string)+1);
-        //printf("Child%d: Wrote '%s' to the pipe.\n", pnum, string);
-        msgNum++;
+    else {
+
+        int msgNum = 1;
+        while (!timedout[pnum]) {
+            char string[BUFFER_SIZE];
+            
+            // sleep for a random time of 0, 1 or 2 seconds
+            int sleepTime = rand()%3;
+            //printf(">>pid: %d  sleepTime: %d ParamRandom: %d\n", pnum, sleepTime, random);
+            sleep(sleepTime);
+
+            // calculate time
+            gettimeofday(&stopTime, NULL);
+            double elapsed = (stopTime.tv_sec - startTime[pnum].tv_sec) +
+                                ((stopTime.tv_usec - startTime[pnum].tv_usec) / 1000000.0);
+            
+            sprintf(string, "0:%06.3lf: Child %d message %d", elapsed, pnum, msgNum);
+            // Write to the WRITE end of the pipe.
+            write(fd[pnum][WRITE_END], string, strlen(string)+1);
+            //printf("Child%d: Wrote '%s' to the pipe.\n", pnum, string);
+            msgNum++;
+        }
     }
-    printf("outside\n");
+
     // Close the WRITE end of the pipe.
     close(fd[pnum][WRITE_END]);
-    
     printf("Child%d: Terminating.\n", pnum);
     exit(0);
 }
@@ -164,8 +143,9 @@ int main(void) {
     
     srand(time(0));
     pid_t pids[NUM_PROC];  // child process id
-    time(&startTime); //set timer start time at 0
-    printf("0:00:000: Start\n");
+    struct timeval pStartTime, pStopTime; //parent clock
+    //time(&startTime); //set timer start time at 0
+    fd_set inputs, inputfds; //file descriptor set
     int i;
     
     // Create the pipes.
@@ -176,13 +156,14 @@ int main(void) {
         }
     }
     
-    //Add file descriptors to input
-    fd_set inputs, inputfds;
+    //Add file descriptors to inputs
     FD_ZERO(&inputs);
     for (i = 0; i < NUM_PROC ; i++) {
         FD_SET(fd[i][READ_END], &inputs);
     }
     
+    gettimeofday(&pStartTime, NULL); //start parent clock
+
     // start children
     for (i = 0; i < NUM_PROC; i++) {
         int r = rand() % 10;
@@ -191,76 +172,90 @@ int main(void) {
             exit(1);
         }
         else if (pids[i] == 0) {
-            int r = rand() % 10;
-            ChildProcess(i, pids[i], r);	// give the child the index of its pipe file descriptor
+            //int r = rand() % 10;
+            ChildProcess(i, pids[i]);	// give the child the index of its pipe file descriptor
         }
     }
     
     // PARENT PROCESS
     // read from the pipes and write to output.txt
+    char read_msg[BUFFER_SIZE]; //buffer for reading pipe message
+    char buffer[32 + BUFFER_SIZE]; //buffer for writing to file
     struct timeval timeout;
     int result;
-    int fdCnt;
-    char read_msg[BUFFER_SIZE];
+    double elapsed;
+    pid_t wpid; //wait pid
+    int status;
+
     for(;;)	{
         
         inputfds = inputs;
         
-        // 2.5 seconds.
+        // wait at least 1.25 seconds.
         timeout.tv_sec = 1;
         timeout.tv_usec = 250000;
         
         // Get select() results.
-        //result = select(FD_SETSIZE, &inputfds,(fd_set *) 0, (fd_set *) 0, &timeout);
         result = select(FD_SETSIZE, &inputfds, NULL, NULL, &timeout);
         
         switch(result) {
+
+            //no file descriptors
             case 0: {
-                time_t now;
-                time(&now);
-                float elapsed = difftime(now, startTime);
-                if((int) elapsed >= DURATION){
-                    printf("0:%06.3lf: End\n", elapsed);
-                    exit(0);
+                for(i = 0; i < NUM_PROC; i++){
+                    //close file descriptor read ends for finished children
+                    if((wpid = waitpid(pids[i], &status, 0)) == pids[i]){//WNOHANG | WUNTRACED
+                        close(fd[i][READ_END]);
+                        printf("\nClose pipe: %d\n", i);
+                    }
                 }
-                //printf("**0:%06.3lf\n", elapsed);
                 break;
             }
-                
+            //error    
             case -1: {
                 perror("select");
                 exit(1);
             }
-                
+            //file descriptors available    
             default: {
-                for(fdCnt = 0; fdCnt < NUM_PROC; fdCnt++){
-                    if (FD_ISSET(fd[fdCnt][READ_END], &inputfds)) {
-                        memset(read_msg, '\0', sizeof(read_msg));
-                        read(fd[fdCnt][READ_END], read_msg, BUFFER_SIZE);
+                for(i = 0; i < NUM_PROC; i++){
+
+                    //Check file descriptors
+                    if (FD_ISSET(fd[i][READ_END], &inputfds)) {
+
+                        memset(read_msg, '\0', sizeof(read_msg)); //zero out buffer
+                        read(fd[i][READ_END], read_msg, BUFFER_SIZE); //read into buffer
+
+                        // calculate time
+                        gettimeofday(&pStopTime, NULL);
+                        elapsed = (pStopTime.tv_sec - pStartTime.tv_sec) +
+                                            ((pStopTime.tv_usec - pStartTime.tv_usec) / 1000000.0);
+
+                        memset(buffer, '\0', sizeof(buffer)); //zero out buffer
+                        sprintf(buffer, "0:%06.3lf | ", elapsed); //parent timestamp
+                        strcat(buffer, read_msg); //child timestamp and message
+                        strcat(buffer, "\n"); //newline
                         //printf("%s\n", read_msg);
                         
-                        
                         FILE *fp;
-                        
-                        fp = fopen("/Users/Gibran/Documents/OSclass/CS149workspace/Assn6/Assn6/output.txt", "a+shit");
-                        if(fp == NULL)
-                        {
+                        /* /Users/Gibran/Documents/OSclass/CS149workspace/Assn6/Assn6/ */
+                        if((fp = fopen("output.txt", "a+")) == NULL){
                             printf("**Error");
-                            exit(0);
-                            
+                            exit(1);
                         }
-                        strcat(read_msg, "\n");
-                        fprintf(fp, read_msg);
-                            
-                        //fclose(fp);
-                        
+                        else {
+                            fprintf(fp, "%s", buffer);
+                        }
+                        fflush(fp);
+                        fclose(fp);
                     }
                 }
                 break;
             }
         }
     }
-    
+    return 0;
+
     /*
      int status;
      printf("Parent: Wait for child to complete.\n")    ;
